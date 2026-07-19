@@ -1443,17 +1443,41 @@
       function renderFirstRouteJson(raw) {
         try {
           const payload = JSON.parse(raw);
-          const records = Array.isArray(payload) ? payload : [{ period: "day", ...payload }];
-          firstRoutePeriods.clear();
-          records.forEach(record => {
-            if (!record || !["day", "month", "year"].includes(record.period)) return;
-            firstRoutePeriods.set(record.period, record);
+          if (!Array.isArray(payload) || payload.length !== 3) throw new Error("period data is incomplete");
+          const nextPeriods = new Map();
+          payload.forEach(record => {
+            if (!isValidPeriodRecord(record) || nextPeriods.has(record.period)) {
+              throw new Error("period data is invalid");
+            }
+            nextPeriods.set(record.period, record);
           });
+          if (!["day", "month", "year"].every(period => nextPeriods.has(period))) {
+            throw new Error("period data is incomplete");
+          }
+          firstRoutePeriods.clear();
+          nextPeriods.forEach((record, period) => firstRoutePeriods.set(period, record));
           renderSelectedPeriod();
         } catch (_error) {
           firstRoutePeriods.clear();
           pdyyRenderDonut(null);
         }
+      }
+
+      function isValidPeriodRecord(record) {
+        if (!record || !["day", "month", "year"].includes(record.period)) return false;
+        const completed = record.completed && record.completed.count;
+        const pending = record.pending && record.pending.count;
+        const completedPercentage = record.completed && record.completed.percentage;
+        const pendingPercentage = record.pending && record.pending.percentage;
+        const total = record.total;
+        if (![completed, pending, total].every(value => Number.isInteger(value) && value >= 0)) return false;
+        if (![completedPercentage, pendingPercentage].every(value => Number.isFinite(value) && value >= 0 && value <= 100)) return false;
+        if (completed + pending !== total) return false;
+        if (total === 0) return completedPercentage === 0 && pendingPercentage === 0;
+        const expectedCompleted = completed / total * 100;
+        const expectedPending = pending / total * 100;
+        return Math.abs(completedPercentage - expectedCompleted) <= .11
+          && Math.abs(pendingPercentage - expectedPending) <= .11;
       }
 
       function renderSelectedPeriod() {
@@ -1496,8 +1520,10 @@
         if (!firstRoute) return;
         try {
           const response = await fetch(firstRoute, { cache: "no-store", headers: { "Accept": "application/json" } });
+          if (!response.ok) throw new Error(`firstRoute returned HTTP ${response.status}`);
           renderFirstRouteJson(await response.text());
         } catch (_error) {
+          firstRoutePeriods.clear();
           pdyyRenderDonut(null);
         }
       }
