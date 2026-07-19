@@ -52,9 +52,9 @@ final class InsightConfig implements UIInsightPlayConfig {
 | 字段 | 用途 |
 | --- | --- |
 | `ip` | 在线 HTML5 后端或业务地址标识 |
-| `firstRoute` | 第一幕 WebProvider 百分比 JSON 路由，必须是 `http` 或 `https` 签名 URL；传入主路由时 SDK 会自动补成 `/<randomString>/<signature>/webprovider` |
+| `firstRoute` | 第一幕 Provider 百分比 JSON 路由，必须是 `http` 或 `https` 签名 URL；传入主路由时 SDK 会自动补成 `/<randomString>/<signature>/provider` |
 | `secondRoute` | 第二幕 HTML5 内嵌浏览器路由，必须是 `http` 或 `https` 签名 URL，SDK 原样交给 GeckoView 加载 |
-| `bypass` | 是否绕过签名路由处理；为 `true` 时任何非空路由字符串都会原样交给 WebView，不解析 URL 结构、不要求 `/<nonce>/<signature>`，也不会为第一幕补 `/webprovider`。生产环境必须为 `false` |
+| `bypass` | 是否绕过签名路由处理；为 `true` 时任何非空路由字符串都会原样交给 WebView，不解析 URL 结构、不要求 `/<nonce>/<signature>`，也不会为第一幕补 `/provider`。生产环境必须为 `false` |
 
 仓库中的 `test` Demo 有意使用 `bypass=true` 和普通 localhost URL，用于稳定验证第一幕 N/A、Android WebView ERR 以及再次上拉切换 N/A；它不是生产配置示例。
 
@@ -87,7 +87,21 @@ NewUIInsightPlay insight = NewInsightKt.NewInsight(
 );
 ```
 
-`NewInsight(...)` 返回的缓冲区包含 `ip`、处理后的 `firstRoute`、`secondRoute`、`bypass`、CSS 配置、WebView creator 和已初始化的 `UIEvent` 空事件结构。`bypass=false` 时，初始化阶段会用 AAR 内置的 `route-public.pem` 公钥等价内容分别验证两个签名路由，并为第一幕路由补全 `/webprovider`。除提取 nonce/signature 所需的前两段路径外，SDK 不再叠加 scheme、host、字符正则或路径总段数检查，路由保护只有 RSA 验签一层。`bypass=true` 时只检查路由字符串非空，随后原样交给网络栈；不解析 URL 结构、不解析 `/<nonce>/<signature>`、不执行 RSA 验签，也不改写第一幕路径、查询参数或 fragment。空路由或真实验签失败会被拒绝加载，但不会抛出异常导致宿主 Activity 或 Compose 首帧崩溃；WebView 创建时会用 Toast 提示初始化错误，原因同时记录在 Logcat 的 `UIKitInsight` 标签下。第一幕会在原生后台线程读取 `firstRoute` 返回的 `{"completed":{"count":151,"percentage":74},"pending":{"count":53,"percentage":26},"total":204}` 结构，再异步回灌 WebView，不会阻塞首屏触摸；等待期间、路由无效、读取失败或数据无效时，中心显示 `N/A`，图例保持 `0 / 0`，环形本体以 1% 状态保留可见。第二幕首次从第一幕上滑完全展开后创建 GeckoSession 并加载 `secondRoute`；GeckoView 一显示就立即接收触摸，不依赖页面完成或首帧合成回调。页面加载错误由 GeckoView 自身显示并保持可交互，SDK 不再隐藏浏览器或切换第二幕 N/A。等待时间、页面颜色、回调顺序和设备性能都不会否决浏览器。低性能模式只减少本地壳层的动画和阴影，不禁用 GeckoView，也不改变第二幕的浏览器优先级。
+`NewInsight(...)` 返回的缓冲区包含 `ip`、处理后的 `firstRoute`、`secondRoute`、`bypass`、CSS 配置、WebView creator 和已初始化的 `UIEvent` 空事件结构。`bypass=false` 时，初始化阶段会用 AAR 内置的 `route-public.pem` 公钥等价内容分别验证两个签名路由，并为第一幕路由补全 `/provider`。除提取 nonce/signature 所需的前两段路径外，SDK 不再叠加 scheme、host、字符正则或路径总段数检查，路由保护只有 RSA 验签一层。`bypass=true` 时只检查路由字符串非空，随后原样交给网络栈；不解析 URL 结构、不解析 `/<nonce>/<signature>`、不执行 RSA 验签，也不改写第一幕路径、查询参数或 fragment。空路由或真实验签失败会被拒绝加载，但不会抛出异常导致宿主 Activity 或 Compose 首帧崩溃；WebView 创建时会用 Toast 提示初始化错误，原因同时记录在 Logcat 的 `UIKitInsight` 标签下。
+
+第一幕会在原生后台线程读取 `/provider` 返回的三元素 JSON 数组，再异步回灌 WebView，不会阻塞首屏触摸。用户可在标题下方切换 `今日`、`本月`、`今年`；客户端通过 `period` 字段匹配数据，不依赖数组顺序：
+
+```json
+[
+  {"period":"day","label":"今日","completed":{"count":151,"percentage":74},"pending":{"count":53,"percentage":26},"total":204},
+  {"period":"month","label":"本月","completed":{"count":1840,"percentage":83.6},"pending":{"count":360,"percentage":16.4},"total":2200},
+  {"period":"year","label":"今年","completed":{"count":18600,"percentage":88.6},"pending":{"count":2400,"percentage":11.4},"total":21000}
+]
+```
+
+数组应各包含一条 `day`、`month`、`year` 记录。某周期缺失或数据无效时只让该周期显示 `N/A`；环形本体仍以 1% 状态保留可见。等待期间、路由无效或读取失败时三个周期均显示 `N/A`，图例保持 `0 / 0`。旧的单对象响应仅作为 `day` 兼容读取，不再是推荐协议。
+
+第二幕首次从第一幕上滑完全展开后创建 GeckoSession 并加载 `secondRoute`；GeckoView 一显示就立即接收触摸，不依赖页面完成或首帧合成回调。页面加载错误由 GeckoView 自身显示并保持可交互，SDK 不再隐藏浏览器或切换第二幕 N/A。等待时间、页面颜色、回调顺序和设备性能都不会否决浏览器。低性能模式只减少本地壳层的动画和阴影，不禁用 GeckoView，也不改变第二幕的浏览器优先级。
 
 AAR 会在接管宿主创建的 WebView 后统一开启 JavaScript、DOM Storage、数据库存储、图片加载、第三方 Cookie 和兼容混合内容模式，并恢复 `LOAD_DEFAULT` 缓存策略；所有设置和导航客户端安装完成后，AAR 才会统一加载内置入口。因此自定义 `UIInsightCreator` 只需负责创建和布局 WebView，不要提前调用 `loadUrl(...)`、`clearCache(true)`，也不要强制设置 `LOAD_NO_CACHE`。第二幕由原生 GeckoView 加载，宿主必须依赖文档开头指定的 GeckoView 版本；AAR 使用 `compileOnly`，不会把 200MB 级 Gecko 运行库重复打进 AAR。SDK 为单个内嵌页关闭 Fission/站点隔离并限制为单内容进程，同时启用 Gecko 低内存检测，以降低与壳 WebView 同时存在时的进程和内存压力；这些设置不会禁用页面加载。
 

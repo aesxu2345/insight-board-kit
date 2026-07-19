@@ -19,7 +19,7 @@ GeckoView 152 requires Java 17 and Android minSdk 26.
 
 ## Signed routes
 
-`UIInsightPlayConfig.firstRoute` and `secondRoute` normally use the `/<randomString>/<signature>` format from `insight2node`; `NewInsight(...)` verifies both routes with the hardcoded SPKI public key and appends `/webprovider` to the first route. Set the explicit `bypass` field to `true` only when testing unsigned local routes. In bypass mode, every non-blank route string is passed to the relevant network loader unchanged: URL structure is not prevalidated, nonce/signature segments are not parsed, RSA verification is skipped, and the first route is not rewritten. With bypass disabled, RSA verification is the only route protection. Production integrations must use `bypass = false`.
+`UIInsightPlayConfig.firstRoute` and `secondRoute` normally use the `/<randomString>/<signature>` format from `insight2node`; `NewInsight(...)` verifies both routes with the hardcoded SPKI public key and appends `/provider` to the first route. Set the explicit `bypass` field to `true` only while testing N/A and browser transitions. In bypass mode, every non-blank route string is passed to the relevant network loader unchanged: URL structure is not prevalidated, nonce/signature segments are not parsed, RSA verification is skipped, and the first route is not rewritten. With bypass disabled, RSA verification is the only route protection. Production integrations must use `bypass = false`.
 
 
 ## Sidebar events
