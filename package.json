@@ -1,0 +1,8 @@
+{
+  "name": "insight-board-kit2",
+  "private": true,
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.2",
+    "tailwindcss": "^4.3.2"
+  }
+}

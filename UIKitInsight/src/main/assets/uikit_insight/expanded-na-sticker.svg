@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 860">
+  <defs>
+    <linearGradient id="windowFill" x1="120" y1="130" x2="590" y2="590" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#dff4e5" stop-opacity=".92" />
+      <stop offset=".52" stop-color="#f6fcf8" stop-opacity=".86" />
+      <stop offset="1" stop-color="#e8f7ed" stop-opacity=".86" />
+    </linearGradient>
+    <linearGradient id="topBar" x1="120" y1="110" x2="600" y2="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b7dfc2" />
+      <stop offset="1" stop-color="#88cfa0" />
+    </linearGradient>
+    <linearGradient id="greenText" x1="260" y1="710" x2="485" y2="820" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0e7e36" />
+      <stop offset="1" stop-color="#28a64f" />
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#19743a" flood-opacity=".14" />
+    </filter>
+  </defs>
+
+  <g opacity=".62" fill="none" stroke="#79c98e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M74 301h42M95 280v42" />
+    <path d="M612 167h34M629 150v34" />
+    <path d="M513 86h34M530 69v34" />
+    <circle cx="112" cy="145" r="16" />
+    <circle cx="626" cy="352" r="12" />
+  </g>
+  <circle cx="89" cy="492" r="14" fill="#79c98e" opacity=".46" />
+
+  <ellipse cx="360" cy="642" rx="265" ry="24" fill="#b7dfc2" opacity=".34" />
+
+  <g filter="url(#softShadow)">
+    <rect x="145" y="188" width="430" height="382" rx="42" fill="url(#windowFill)" stroke="#a8dcb7" stroke-width="12" />
+    <path d="M145 264h430v-34c0-23-19-42-42-42H187c-23 0-42 19-42 42z" fill="url(#topBar)" opacity=".92" />
+    <circle cx="196" cy="226" r="13" fill="#f7fff9" opacity=".94" />
+    <circle cx="239" cy="226" r="13" fill="#f7fff9" opacity=".94" />
+    <circle cx="282" cy="226" r="13" fill="#f7fff9" opacity=".94" />
+
+    <g transform="translate(240 310)" fill="none" stroke="#8fd0a0" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" opacity=".74">
+      <circle cx="120" cy="120" r="94" />
+      <path d="M26 120h188M120 26c36 38 36 150 0 188M120 26c-36 38-36 150 0 188" />
+      <path d="M50 73h140M50 167h140" />
+    </g>
+
+    <g transform="translate(445 438)">
+      <circle cx="92" cy="92" r="86" fill="#fff" opacity=".96" />
+      <circle cx="92" cy="92" r="68" fill="none" stroke="#69bd7d" stroke-width="17" />
+      <path d="M45 46l94 94" stroke="#69bd7d" stroke-width="17" stroke-linecap="round" />
+    </g>
+  </g>
+
+  <text x="360" y="805" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="114" font-weight="760" fill="url(#greenText)">N/A</text>
+</svg>

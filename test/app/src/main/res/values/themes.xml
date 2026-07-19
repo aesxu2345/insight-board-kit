@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.UIKitInsightDemo" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:colorAccent">#17803a</item>
+    </style>
+</resources>
