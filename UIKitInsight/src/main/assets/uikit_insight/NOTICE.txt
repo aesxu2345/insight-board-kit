@@ -1,0 +1,26 @@
+UIKitInsight Notice
+===================
+
+This product includes UIKitInsight software developed by the UIKitInsight
+contributors.
+
+Default license: PolyForm Free Trial License 1.0.0.
+Commercial use: permitted only under a valid UIKitInsight Commercial
+Integration License within the agreed written scope.
+
+Advertising acknowledgement:
+
+  This product includes UIKitInsight software developed by the UIKitInsight
+  contributors.
+
+No endorsement:
+
+Neither the name "UIKitInsight" nor the names of the project owner or
+contributors may be used to endorse or promote products derived from or
+integrated with UIKitInsight without prior written permission.
+
+No additional authorization:
+
+This notice does not grant any additional license, permission, sublicense,
+commercial right, distribution right, production-use right, patent right,
+trademark right, or other authorization.
