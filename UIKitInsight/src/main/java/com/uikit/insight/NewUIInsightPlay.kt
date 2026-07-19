@@ -89,7 +89,7 @@ class NewUIInsightPlay internal constructor(
             SECOND_ROUTE_BRIDGE_NAME
         )
         next.addJavascriptInterface(
-            RouteJsonJavascriptBridge(firstRoute) { json ->
+            RouteJsonJavascriptBridge(next.context.applicationContext, firstRoute) { json ->
                 next.post {
                     if (webView !== next) return@post
                     val quotedJson = JSONObject.quote(json)
@@ -570,11 +570,14 @@ internal class GeckoSecondRouteController(
 }
 
 internal class RouteJsonJavascriptBridge(
+    private val context: Context,
     private val firstRoute: String,
     private val onLoaded: (String) -> Unit
 ) {
     @Volatile
     private var requestStarted = false
+    private var consecutiveFailures = 0
+    private var healthPromptShown = false
 
     @JavascriptInterface
     fun loadFirstRouteJson() {
@@ -583,6 +586,7 @@ internal class RouteJsonJavascriptBridge(
             requestStarted = true
         }
         Thread({
+            var routeReachable = false
             val json = runCatching {
                 val connection = (URL(firstRoute).openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
@@ -592,17 +596,44 @@ internal class RouteJsonJavascriptBridge(
                     setRequestProperty("Accept", "application/json")
                 }
                 try {
-                    val stream = if (connection.responseCode in 200..299) {
-                        connection.inputStream
-                    } else {
-                        connection.errorStream
-                    }
-                    stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+                    if (connection.responseCode !in 200..299) return@runCatching ""
+                    routeReachable = true
+                    connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
                 } finally {
                     connection.disconnect()
                 }
             }.getOrDefault("")
+            val showHealthPrompt = synchronized(this) {
+                requestStarted = false
+                if (healthPromptShown) {
+                    false
+                } else if (routeReachable) {
+                    consecutiveFailures = 0
+                    false
+                } else {
+                    consecutiveFailures += 1
+                    if (consecutiveFailures >= MAX_HEALTH_FAILURES) {
+                        healthPromptShown = true
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+            if (showHealthPrompt) {
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(
+                        context,
+                        "第一路由连续 10 次无法访问，请检查网络或服务地址",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
             onLoaded(json)
         }, "UIKitInsight-first-route").start()
+    }
+
+    private companion object {
+        const val MAX_HEALTH_FAILURES = 10
     }
 }

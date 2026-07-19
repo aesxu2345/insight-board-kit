@@ -101,6 +101,8 @@ NewUIInsightPlay insight = NewInsightKt.NewInsight(
 
 数组必须各包含一条 `day`、`month`、`year` 记录，且三条记录的数量、总数和百分比必须完整、非负并彼此一致。SDK 原子接收整组数据：任意记录缺失、重复或字段无效时，不使用其它周期、旧单对象或内置示例补位，三个周期全部显示 `N/A`，图例保持 `0 / 0`，环形本体固定以 1% 状态保留可见。等待期间、路由无效、HTTP 非成功状态或读取失败时同样进入该状态。
 
+第一路由在首屏加载后每 10 秒重新请求一次。刷新请求开始时保留当前画面，成功且三周期数据完整时一次性替换；HTTP 非成功状态或网络异常时切换到上述 `N/A` 状态。SDK 复用数据请求结果做测活，不发送额外 ICMP 或探测请求；连续 10 次 HTTP 请求失败后仅弹出一次 Toast，后续仍继续数据轮询以便服务恢复，但不会重复测活提示。任意一次 HTTP 成功都会在提示触发前清零连续失败计数。
+
 第二幕首次从第一幕上滑完全展开后创建 GeckoSession 并加载 `secondRoute`；GeckoView 一显示就立即接收触摸，不依赖页面完成或首帧合成回调。页面加载错误由 GeckoView 自身显示并保持可交互，SDK 不再隐藏浏览器或切换第二幕 N/A。等待时间、页面颜色、回调顺序和设备性能都不会否决浏览器。低性能模式只减少本地壳层的动画和阴影，不禁用 GeckoView，也不改变第二幕的浏览器优先级。
 
 AAR 会在接管宿主创建的 WebView 后统一开启 JavaScript、DOM Storage、数据库存储、图片加载、第三方 Cookie 和兼容混合内容模式，并恢复 `LOAD_DEFAULT` 缓存策略；所有设置和导航客户端安装完成后，AAR 才会统一加载内置入口。因此自定义 `UIInsightCreator` 只需负责创建和布局 WebView，不要提前调用 `loadUrl(...)`、`clearCache(true)`，也不要强制设置 `LOAD_NO_CACHE`。第二幕由原生 GeckoView 加载，宿主必须依赖文档开头指定的 GeckoView 版本；AAR 使用 `compileOnly`，不会把 200MB 级 Gecko 运行库重复打进 AAR。SDK 为单个内嵌页关闭 Fission/站点隔离并限制为单内容进程，同时启用 Gecko 低内存检测，以降低与壳 WebView 同时存在时的进程和内存压力；这些设置不会禁用页面加载。

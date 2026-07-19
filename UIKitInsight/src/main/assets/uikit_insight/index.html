@@ -1510,14 +1510,16 @@
         });
       });
 
-      async function loadFirstRouteDonut() {
-        firstRoutePeriods.clear();
-        pdyyRenderDonut(null);
+      async function loadFirstRouteDonut(clearExisting = false) {
+        if (clearExisting) {
+          firstRoutePeriods.clear();
+          pdyyRenderDonut(null);
+        }
+        if (!firstRoute) return;
         if (window.UIKitInsightRouteJson && typeof window.UIKitInsightRouteJson.loadFirstRouteJson === "function") {
           window.UIKitInsightRouteJson.loadFirstRouteJson();
           return;
         }
-        if (!firstRoute) return;
         try {
           const response = await fetch(firstRoute, { cache: "no-store", headers: { "Accept": "application/json" } });
           if (!response.ok) throw new Error(`firstRoute returned HTTP ${response.status}`);
@@ -1529,6 +1531,9 @@
       }
 
       window.UIKitInsightReceiveFirstRouteJson = renderFirstRouteJson;
+      if (firstRoute) {
+        window.setInterval(() => loadFirstRouteDonut(false), 10000);
+      }
 
       function emitUIEvent(key, value) {
         if (window.UIKitInsightUIEvent && typeof window.UIKitInsightUIEvent.onMenuClick === "function") {
@@ -1919,7 +1924,7 @@
       window.UIKitInsightMarkSecondRouteLoaded = markSecondRouteLoaded;
       window.UIKitInsightShowSecondRouteNA = showSecondRouteNA;
       window.UIKitInsightShowFirstScene = function () { animateSceneTo(0); };
-      loadFirstRouteDonut();
+      loadFirstRouteDonut(true);
 
       paint(0);
     </script>
