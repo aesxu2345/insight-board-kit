@@ -536,7 +536,7 @@ internal class GeckoSecondRouteController(
         const val ABOUT_BLANK = "about:blank"
         val BROWSER_COVER_COLOR = Color.rgb(247, 250, 247)
         const val COLLAPSE_GESTURE_DP = 64f
-        const val COMPACT_HEADER_DP = 44f
+        const val COMPACT_HEADER_DP = 28f
 
         @Volatile
         private var sharedRuntime: GeckoRuntime? = null

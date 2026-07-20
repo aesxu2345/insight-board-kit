@@ -105,6 +105,8 @@ NewUIInsightPlay insight = NewInsightKt.NewInsight(
 
 第二幕首次从第一幕上滑完全展开后创建 GeckoSession 并加载 `secondRoute`；GeckoView 一显示就立即接收触摸，不依赖页面完成或首帧合成回调。页面加载错误由 GeckoView 自身显示并保持可交互，SDK 不再隐藏浏览器或切换第二幕 N/A。等待时间、页面颜色、回调顺序和设备性能都不会否决浏览器。低性能模式只减少本地壳层的动画和阴影，不禁用 GeckoView，也不改变第二幕的浏览器优先级。
 
+第二幕 GeckoView 从宿主顶部保留 `28dp` 的紧凑区域：浏览器矩形画布会覆盖壳层绿色弧线，只留下状态区域下方的细直条。该偏移属于原生容器布局，不会注入或改写 `secondRoute` 页面的 CSS。
+
 AAR 会在接管宿主创建的 WebView 后统一开启 JavaScript、DOM Storage、数据库存储、图片加载、第三方 Cookie 和兼容混合内容模式，并恢复 `LOAD_DEFAULT` 缓存策略；所有设置和导航客户端安装完成后，AAR 才会统一加载内置入口。因此自定义 `UIInsightCreator` 只需负责创建和布局 WebView，不要提前调用 `loadUrl(...)`、`clearCache(true)`，也不要强制设置 `LOAD_NO_CACHE`。第二幕由原生 GeckoView 加载，宿主必须依赖文档开头指定的 GeckoView 版本；AAR 使用 `compileOnly`，不会把 200MB 级 Gecko 运行库重复打进 AAR。SDK 为单个内嵌页关闭 Fission/站点隔离并限制为单内容进程，同时启用 Gecko 低内存检测，以降低与壳 WebView 同时存在时的进程和内存压力；这些设置不会禁用页面加载。
 
 Compose `AndroidView` 必须返回一个允许同时容纳 WebView 与 GeckoView 的 `FrameLayout`，并调用 `insight.Display(context, frameLayout)`。不要让 `AndroidView.factory` 直接返回 `insight.Display(UIInsightCreator)` 得到的 WebView；Compose 的 `AndroidViewHolder` 只管理该 WebView，后加的 GeckoView 会落到错误层级并被壳页面遮挡。
