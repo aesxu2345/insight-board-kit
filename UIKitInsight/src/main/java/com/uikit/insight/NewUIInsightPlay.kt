@@ -20,6 +20,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.Toast
+import org.json.JSONArray
 import org.json.JSONObject
 import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.GeckoResult
@@ -586,7 +587,6 @@ internal class RouteJsonJavascriptBridge(
             requestStarted = true
         }
         Thread({
-            var routeReachable = false
             val json = runCatching {
                 val connection = (URL(firstRoute).openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
@@ -597,17 +597,17 @@ internal class RouteJsonJavascriptBridge(
                 }
                 try {
                     if (connection.responseCode !in 200..299) return@runCatching ""
-                    routeReachable = true
                     connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
                 } finally {
                     connection.disconnect()
                 }
             }.getOrDefault("")
+            val validDataReceived = isValidPeriodPayload(json)
             val showHealthPrompt = synchronized(this) {
                 requestStarted = false
                 if (healthPromptShown) {
                     false
-                } else if (routeReachable) {
+                } else if (validDataReceived) {
                     consecutiveFailures = 0
                     false
                 } else {
@@ -624,7 +624,7 @@ internal class RouteJsonJavascriptBridge(
                 Handler(Looper.getMainLooper()).post {
                     Toast.makeText(
                         context,
-                        "第一路由连续 10 次无法访问，请检查网络或服务地址",
+                        "第一路由连续 10 次未获取到有效数据，请检查数据服务",
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -633,7 +633,56 @@ internal class RouteJsonJavascriptBridge(
         }, "UIKitInsight-first-route").start()
     }
 
+    private fun isValidPeriodPayload(json: String): Boolean = runCatching {
+        val payload = JSONArray(json)
+        if (payload.length() != EXPECTED_PERIODS.size) return@runCatching false
+        val receivedPeriods = mutableSetOf<String>()
+        for (index in 0 until payload.length()) {
+            val record = payload.getJSONObject(index)
+            val period = record.getString("period")
+            if (period !in EXPECTED_PERIODS || !receivedPeriods.add(period)) {
+                return@runCatching false
+            }
+            val completed = record.getJSONObject("completed")
+            val pending = record.getJSONObject("pending")
+            val completedCount = completed.validCount("count") ?: return@runCatching false
+            val pendingCount = pending.validCount("count") ?: return@runCatching false
+            val total = record.validCount("total") ?: return@runCatching false
+            val completedPercentage = completed.validPercentage("percentage")
+                ?: return@runCatching false
+            val pendingPercentage = pending.validPercentage("percentage")
+                ?: return@runCatching false
+            if (completedCount + pendingCount != total) return@runCatching false
+            if (total == 0L) {
+                if (completedPercentage != 0.0 || pendingPercentage != 0.0) {
+                    return@runCatching false
+                }
+            } else {
+                val expectedCompleted = completedCount.toDouble() / total * 100.0
+                val expectedPending = pendingCount.toDouble() / total * 100.0
+                if (kotlin.math.abs(completedPercentage - expectedCompleted) > PERCENT_TOLERANCE ||
+                    kotlin.math.abs(pendingPercentage - expectedPending) > PERCENT_TOLERANCE
+                ) return@runCatching false
+            }
+        }
+        receivedPeriods == EXPECTED_PERIODS
+    }.getOrDefault(false)
+
+    private fun JSONObject.validCount(name: String): Long? {
+        val value = opt(name) as? Number ?: return null
+        val numeric = value.toDouble()
+        if (!numeric.isFinite() || numeric < 0 || numeric % 1.0 != 0.0) return null
+        return numeric.toLong()
+    }
+
+    private fun JSONObject.validPercentage(name: String): Double? {
+        val value = (opt(name) as? Number)?.toDouble() ?: return null
+        return value.takeIf { it.isFinite() && it in 0.0..100.0 }
+    }
+
     private companion object {
         const val MAX_HEALTH_FAILURES = 10
+        const val PERCENT_TOLERANCE = 0.11
+        val EXPECTED_PERIODS = setOf("day", "month", "year")
     }
 }
