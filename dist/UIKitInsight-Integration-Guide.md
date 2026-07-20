@@ -113,9 +113,33 @@ Compose `AndroidView` 必须返回一个允许同时容纳 WebView 与 GeckoView
 
 第一幕会根据 WebView 的实际可用高度缩放环形图；宿主使用 `enableEdgeToEdge()` 与 `navigationBarsPadding()` 避让底部三键导航栏时，不需要注入 JavaScript 修改图表尺寸。卡片触摸隔离、内部拖动和低性能模式仍由 AAR 自身管理。
 
-`NewInsight` 还预留了空实现方法 `OnCardNo(String cardno)`。当前版本调用该方法不会触发业务行为，接入方可以安全保留调用位置，供后续卡号流程扩展。
+`NewInsight` 内含由 `NewCardNoEventListener()` 初始化的 `OnCardNo` 监听器对象。它提供 `enroll(event)`、无参数 `run()` 和 `destroy()`：开发者继承 `OnCardNo`、覆写空方法 `event(String str)`，再把事件对象传给 `enroll(...)` 完成上转型登记。
 
-第二幕会监控与 `secondRoute` 同源的虚拟导航 `/invalid/exam/<体检编号>`。只有路径严格由 `invalid`、`exam` 和一个非空值三段组成时，AAR 才会 URL 解码最后一段、调用 `OnCardNo(cardno)`，并返回 `true` 阻止 WebView 加载该无效页面。例如第二幕触发 `/invalid/exam/TJ000001` 时，会调用 `OnCardNo("TJ000001")`。普通 404、签名失败以及仅包含 `invalid` 或 `exam` 字样的其他 URL 均不会触发。
+`run()` 是持续阻塞的监听循环，只需在工作线程启动一次。没有卡号时它会休眠等待，不需要宿主轮询或高频重复调用；AAR 捕获卡号后会写入内部队列，由该循环调用当前登记对象的 `event(str)`。监听期间再次调用 `enroll(...)` 可以动态替换事件对象，后续卡号会交给新对象。未先 `enroll`、重复并发执行 `run()`，或者在对象销毁后调用这些方法，都会抛出 `IllegalStateException`。
+
+`destroy()` 是不可逆销毁，不等同于清除登记：它会唤醒并结束正在阻塞的 `run()`，销毁当前已登记事件并释放引用。销毁后的对象不能重新登记或复活；需要再次监听时必须通过 `NewCardNoEventListener()` 创建新对象。`Destory()` 会自动销毁该监听器。
+
+第二幕会监控与 `secondRoute` 同源的虚拟导航 `/invalid/exam/<体检编号>`。只有路径严格由 `invalid`、`exam` 和一个非空值三段组成时，AAR 才会 URL 解码最后一段、将卡号发布到内部监听队列，并返回拒绝结果阻止 GeckoView 加载该无效页面。例如第二幕触发 `/invalid/exam/TJ-DEMO-002` 时，正在运行的监听器会收到并调用 `event("TJ-DEMO-002")`。普通 404、签名失败、跨源 URL 以及仅包含 `invalid` 或 `exam` 字样的其他 URL 均不会触发。
+
+Java 宿主应先登记事件，再用一个工作线程启动一次 `run()`。`event(str)` 在该工作线程执行；更新 Android UI 时必须切回主线程：
+
+```java
+insight.getOnCardNo().enroll(new OnCardNo() {
+    @Override public void event(String str) {
+        runOnUiThread(() -> openExamDetail(str));
+    }
+});
+
+ExecutorService cardNoExecutor = Executors.newSingleThreadExecutor();
+cardNoExecutor.execute(() -> insight.getOnCardNo().run());
+```
+
+生命周期结束时先销毁 `NewInsight`，使阻塞中的 `run()` 正常退出，再关闭工作线程：
+
+```java
+insight.Destory();
+cardNoExecutor.shutdownNow();
+```
 
 ## 5. 注册 Sidebar 业务事件
 

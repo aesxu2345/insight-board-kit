@@ -61,7 +61,7 @@ class NewUIInsightPlay internal constructor(
         val browser = GeckoSecondRouteController(
             host = next,
             secondRoute = secondRoute,
-            onCardNo = ::OnCardNo,
+            onCardNo = OnCardNo::publish,
             onRequestFirstScene = {
                 next.post {
                     if (webView !== next) return@post
@@ -183,6 +183,7 @@ class NewUIInsightPlay internal constructor(
     }
 
     fun Destory() {
+        OnCardNo.destroy()
         creator = { releaseWebView(clearEvents = true) }
         creator.invoke()
     }
