@@ -556,17 +556,13 @@
       .board-white {
         position: relative;
         z-index: 4;
-        display: flex;
+        display: block;
         width: calc(100vw - 96px);
         max-width: var(--panel-max);
         min-height: clamp(420px, calc(100dvh - var(--header-height) - 145px), 640px);
         flex: 1 1 0;
         margin-left: auto;
         margin-right: auto;
-        flex-direction: column;
-        align-items: center;
-        justify-content: stretch;
-        gap: 8px;
         padding: 14px 12px 16px;
         border-radius: 19px;
         border: 1px solid rgba(0, 0, 0, .05);
@@ -575,17 +571,23 @@
         box-shadow:
           0 18px 42px rgba(35, 112, 61, .09),
           0 4px 14px rgba(17, 55, 31, .035);
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
         contain: layout paint;
-        touch-action: none;
+        touch-action: pan-y;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .board-white::-webkit-scrollbar {
+        display: none;
       }
 
       .pdyy-chart-box {
         display: flex;
         width: 100%;
-        height: 100%;
-        min-height: 0;
-        flex: 1 1 0;
+        min-height: 100%;
         flex-direction: column;
         align-items: center;
         padding-top: 16px;
@@ -599,14 +601,6 @@
         flex: 0 0 auto;
         aspect-ratio: 1;
         overflow: visible;
-      }
-
-      .pdyy-legend-viewport {
-        position: relative;
-        width: 100%;
-        min-height: 0;
-        flex: 1 1 0;
-        overflow: hidden;
       }
 
       .pdyy-sep {
@@ -626,7 +620,6 @@
         box-shadow:
           0 10px 24px rgba(20, 96, 48, .06),
           0 2px 8px rgba(0, 0, 0, .03);
-        will-change: transform;
       }
 
       .pdyy-legend-row {
@@ -1151,29 +1144,27 @@
                 <text id="pdyyPercentText" x="195" y="221" text-anchor="middle" font-size="42" font-weight="900" fill="#17803a">0%</text>
               </svg>
 
-              <div class="pdyy-legend-viewport">
-                <div class="pdyy-legend-card" aria-label="早餐状态图例">
-                  <div class="pdyy-legend-row">
-                    <span class="pdyy-dot pdyy-dot-completed"></span>
-                    <span class="pdyy-label">已完成</span>
-                    <span class="pdyy-dash"></span>
-                    <span id="pdyyCompletedText" class="pdyy-value">83</span>
-                    <span id="pdyyCompletedPercentText" class="pdyy-percent">(74.1%)</span>
-                  </div>
-                  <div class="pdyy-legend-row">
-                    <span class="pdyy-dot pdyy-dot-remaining"></span>
-                    <span class="pdyy-label">剩余</span>
-                    <span class="pdyy-dash"></span>
-                    <span id="pdyyRemainingText" class="pdyy-value">29</span>
-                    <span id="pdyyRemainingPercentText" class="pdyy-percent">(25.9%)</span>
-                  </div>
-                  <div id="pdyyScanFailedRow" class="pdyy-legend-row" hidden>
-                    <span class="pdyy-dot pdyy-dot-scan-failed"></span>
-                    <span class="pdyy-label">已扫码未登记</span>
-                    <span class="pdyy-dash"></span>
-                    <span id="pdyyScanFailedText" class="pdyy-value">0</span>
-                    <span id="pdyyScanFailedPercentText" class="pdyy-percent">(0.0%)</span>
-                  </div>
+              <div class="pdyy-legend-card" aria-label="早餐状态图例">
+                <div class="pdyy-legend-row">
+                  <span class="pdyy-dot pdyy-dot-completed"></span>
+                  <span class="pdyy-label">已完成</span>
+                  <span class="pdyy-dash"></span>
+                  <span id="pdyyCompletedText" class="pdyy-value">83</span>
+                  <span id="pdyyCompletedPercentText" class="pdyy-percent">(74.1%)</span>
+                </div>
+                <div class="pdyy-legend-row">
+                  <span class="pdyy-dot pdyy-dot-remaining"></span>
+                  <span class="pdyy-label">剩余</span>
+                  <span class="pdyy-dash"></span>
+                  <span id="pdyyRemainingText" class="pdyy-value">29</span>
+                  <span id="pdyyRemainingPercentText" class="pdyy-percent">(25.9%)</span>
+                </div>
+                <div id="pdyyScanFailedRow" class="pdyy-legend-row" hidden>
+                  <span class="pdyy-dot pdyy-dot-scan-failed"></span>
+                  <span class="pdyy-label">已扫码未登记</span>
+                  <span class="pdyy-dash"></span>
+                  <span id="pdyyScanFailedText" class="pdyy-value">0</span>
+                  <span id="pdyyScanFailedPercentText" class="pdyy-percent">(0.0%)</span>
                 </div>
               </div>
             </div>
@@ -1442,8 +1433,6 @@
       const scanButton = document.getElementById("scanButton");
       const scanLabel = document.getElementById("scanLabel");
       const firstSceneCard = document.getElementById("firstSceneCard");
-      const firstSceneLegendViewport = firstSceneCard.querySelector(".pdyy-legend-viewport");
-      const firstSceneLegend = firstSceneCard.querySelector(".pdyy-legend-card");
       const firstRoute = params.get("firstRoute") || "";
       const secondRoute = params.get("secondRoute") || "";
       function readInitialScan2Fail() {
@@ -1491,14 +1480,6 @@
       let scannerDragging = false;
       let scannerSettleFrame = 0;
       let suppressScanClickUntil = 0;
-      let cardOffset = 0;
-      let cardStartOffset = 0;
-      let cardStartY = 0;
-      let cardLastY = 0;
-      let cardLastTime = 0;
-      let cardVelocity = 0;
-      let cardDragging = false;
-      let cardSettleFrame = 0;
       const scannerPullThreshold = 64;
       const scannerPullMax = 110;
       const secondRouteRetryDelay = 10000;
@@ -1743,51 +1724,17 @@
         sceneSettleFrame = requestAnimationFrame(settle);
       }
 
-      function maxCardLift() {
-        const viewportRect = firstSceneLegendViewport.getBoundingClientRect();
-        const legendRect = firstSceneLegend.getBoundingClientRect();
-        const unshiftedLegendBottom = legendRect.bottom - cardOffset;
-        return Math.max(0, unshiftedLegendBottom - viewportRect.bottom + 2);
-      }
-
-      function paintCardOffset(value) {
-        const limit = maxCardLift();
-        cardOffset = Math.max(-limit, Math.min(0, value));
-        firstSceneLegend.style.transform = `translate3d(0, ${cardOffset}px, 0)`;
-      }
-
       function reconcileCardLayout() {
-        requestAnimationFrame(() => paintCardOffset(cardOffset));
+        requestAnimationFrame(() => {
+          const maxScroll = Math.max(0, firstSceneCard.scrollHeight - firstSceneCard.clientHeight);
+          if (firstSceneCard.scrollTop > maxScroll) firstSceneCard.scrollTop = maxScroll;
+        });
       }
 
       function setScanFailedRowVisible(row, visible) {
         const hidden = !visible;
-        if (row.hidden !== hidden) cardOffset = 0;
+        if (row.hidden !== hidden) firstSceneCard.scrollTop = 0;
         row.hidden = hidden;
-      }
-
-      function animateCardTo(destination) {
-        if (cardSettleFrame) cancelAnimationFrame(cardSettleFrame);
-        const initialOffset = cardOffset;
-        const target = Math.max(-maxCardLift(), Math.min(0, destination));
-        if (lowPerformance || Math.abs(target - initialOffset) < .5) {
-          paintCardOffset(target);
-          return;
-        }
-        const startedAt = performance.now();
-        const duration = 210;
-        const settle = now => {
-          const elapsed = Math.min(1, (now - startedAt) / duration);
-          const eased = 1 - Math.pow(1 - elapsed, 3);
-          paintCardOffset(initialOffset + (target - initialOffset) * eased);
-          if (elapsed < 1) {
-            cardSettleFrame = requestAnimationFrame(settle);
-          } else {
-            cardSettleFrame = 0;
-            paintCardOffset(target);
-          }
-        };
-        cardSettleFrame = requestAnimationFrame(settle);
       }
 
       function bindVerticalGesture(element, handlers) {
@@ -1856,41 +1803,6 @@
           const shouldOpen = !cancelled && scannerPull >= scannerPullThreshold;
           if (scannerPull > 3) suppressScanClickUntil = Date.now() + 450;
           settleScannerPull(shouldOpen);
-        }
-      });
-
-      bindVerticalGesture(firstSceneCard, {
-        start(y, event) {
-          event.stopPropagation();
-          if (progress > .05) return false;
-          if (cardSettleFrame) cancelAnimationFrame(cardSettleFrame);
-          cardSettleFrame = 0;
-          cardDragging = true;
-          cardStartY = y;
-          cardLastY = y;
-          cardLastTime = performance.now();
-          cardStartOffset = cardOffset;
-          cardVelocity = 0;
-          return true;
-        },
-        move(y, event) {
-          event.stopPropagation();
-          if (!cardDragging) return;
-          const now = performance.now();
-          const elapsed = Math.max(1, now - cardLastTime);
-          cardVelocity = (y - cardLastY) / elapsed;
-          cardLastY = y;
-          cardLastTime = now;
-          if (Math.abs(y - cardStartY) > 2) event.preventDefault();
-          paintCardOffset(cardStartOffset + y - cardStartY);
-        },
-        end(_y, event, cancelled) {
-          event.stopPropagation();
-          if (!cardDragging) return;
-          cardDragging = false;
-          const limit = maxCardLift();
-          const revealBottom = !cancelled && (cardVelocity < -.12 || cardOffset < -limit * .35);
-          animateCardTo(revealBottom ? -limit : 0);
         }
       });
 
