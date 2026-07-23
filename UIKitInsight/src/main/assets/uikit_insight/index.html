@@ -634,6 +634,10 @@
         font-size: 15px;
       }
 
+      .pdyy-legend-row[hidden] {
+        display: none !important;
+      }
+
       .pdyy-dot {
         width: 14px;
         height: 14px;
@@ -1236,8 +1240,9 @@
           pdyySetText("pdyyCompletedPercentText", "(0.0%)");
           pdyySetText("pdyyRemainingText", "0");
           pdyySetText("pdyyRemainingPercentText", "(0.0%)");
-          scanFailedRow.hidden = true;
+          setScanFailedRowVisible(scanFailedRow, false);
           document.getElementById("pdyyDonutSvg").setAttribute("aria-label", "早餐状态饼图：暂无数据");
+          reconcileCardLayout();
           return;
         }
 
@@ -1314,9 +1319,10 @@
         pdyySetText("pdyyCompletedPercentText", `(${completedPercent.toFixed(1)}%)`);
         pdyySetText("pdyyRemainingText", String(remaining));
         pdyySetText("pdyyRemainingPercentText", `(${remainingPercent.toFixed(1)}%)`);
-        scanFailedRow.hidden = scanFailed <= 0;
+        setScanFailedRowVisible(scanFailedRow, scanFailed > 0);
         pdyySetText("pdyyScanFailedText", String(scanFailed));
         pdyySetText("pdyyScanFailedPercentText", `(${scanFailedPercent.toFixed(1)}%)`);
+        reconcileCardLayout();
       }
 
       function detailDonutPath(cx, cy, outerRadius, innerRadius, startAngle, endAngle) {
@@ -1741,6 +1747,16 @@
         const limit = maxCardLift();
         cardOffset = Math.max(-limit, Math.min(0, value));
         firstSceneCardContent.style.transform = `translate3d(0, ${cardOffset}px, 0)`;
+      }
+
+      function reconcileCardLayout() {
+        requestAnimationFrame(() => paintCardOffset(cardOffset));
+      }
+
+      function setScanFailedRowVisible(row, visible) {
+        const hidden = !visible;
+        if (row.hidden !== hidden) cardOffset = 0;
+        row.hidden = hidden;
       }
 
       function animateCardTo(destination) {
