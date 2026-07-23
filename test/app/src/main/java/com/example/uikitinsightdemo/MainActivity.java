@@ -47,6 +47,7 @@ public class MainActivity extends Activity {
                 "#18813b"
         );
         insight = NewInsightKt.NewInsight(new DemoConfig(), css);
+        insight.fix2fail(1);
         insight.getOnCardNo().enroll(new OnCardNo() {
             @Override
             public void event(String str) {

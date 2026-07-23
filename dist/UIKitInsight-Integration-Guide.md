@@ -101,6 +101,16 @@ NewUIInsightPlay insight = NewInsightKt.NewInsight(
 
 数组必须各包含一条 `day`、`month`、`year` 记录，且三条记录的数量、总数和百分比必须完整、非负并彼此一致。SDK 原子接收整组数据：任意记录缺失、重复或字段无效时，不使用其它周期、旧单对象或内置示例补位，三个周期全部显示 `N/A`，图例保持 `0 / 0`，环形本体固定以 1% 状态保留可见。等待期间、路由无效、HTTP 非成功状态或读取失败时同样进入该状态。
 
+`NewUIInsightPlay` 生命周期内还持有一个以公开基类 `Scan2Fail` 暴露、由内部可变实现承载的 `scan2fail` 状态对象。调用 `fix2fail(int value)` 可更新“已扫码未登记”数量：正整数会在第一幕增加橙色环形区段、图例和 leader line 百分比，`0` 会移除该状态，负数会抛出 `IllegalArgumentException`。方法返回当前 `NewUIInsightPlay`，因此也可以链式配置；`Destory()` 后该状态不可再次修改。
+
+```java
+NewUIInsightPlay insight = NewInsightKt.NewInsight(config, css);
+insight.fix2fail(3);
+int current = insight.getScan2fail().getValue();
+```
+
+`scan2fail` 是 firstRoute 之外的第三个独立计数。服务端返回的 `completed.count`、`pending.count` 和 `total` 不会被改写；展示时采用 `displayTotal = total + scan2fail`，并按该总数重新计算三部分百分比。例如 firstRoute 为已完成 `5`、剩余 `2`，再调用 `fix2fail(1)`，第一幕会展示 `62.5% / 25.0% / 12.5%`，而不是继续使用服务端原来的 `71.4% / 28.6%`。切换今日、本月、今年时，同一个运行期 `scan2fail` 值会分别加入当前周期。没有有效 firstRoute 数据时仍保持原有 `N/A` 与 1% 占位环，不用虚构数据计算橙色占比。
+
 第一路由在首屏加载后每 10 秒重新请求一次。刷新请求开始时保留当前画面，成功且三周期数据完整时一次性替换；HTTP 非成功状态、网络异常或响应数据无效时切换到上述 `N/A` 状态。Toast 判据不是路由能否 ping 通或是否返回 HTTP 200，而是本轮是否捕获到完整且一致的 `day/month/year` 有效数据；连续 10 轮未获得有效数据后仅提示一次，后续仍继续数据轮询以便服务恢复，但不会重复提示。任意一轮捕获到有效数据都会在提示触发前清零连续失败计数。
 
 第二幕首次从第一幕上滑完全展开后创建 GeckoSession 并加载 `secondRoute`；GeckoView 一显示就立即接收触摸，不依赖页面完成或首帧合成回调。页面加载错误由 GeckoView 自身显示并保持可交互，SDK 不再隐藏浏览器或切换第二幕 N/A。等待时间、页面颜色、回调顺序和设备性能都不会否决浏览器。低性能模式只减少本地壳层的动画和阴影，不禁用 GeckoView，也不改变第二幕的浏览器优先级。

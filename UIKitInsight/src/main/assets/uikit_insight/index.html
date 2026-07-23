@@ -649,6 +649,24 @@
         background: #82d166;
       }
 
+      .pdyy-dot-scan-failed {
+        background: #ee8a1a;
+      }
+
+      .pdyy-scan-failed-leader {
+        fill: none;
+        stroke: #d96f0d;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .pdyy-scan-failed-label {
+        fill: #b95b08;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
       .pdyy-label {
         color: #222;
         font-weight: 500;
@@ -1107,6 +1125,10 @@
                     <stop offset="0" stop-color="#b7e98d" />
                     <stop offset="1" stop-color="#8bd065" />
                   </linearGradient>
+                  <linearGradient id="pdyyGradScanFailed" x1="80" y1="40" x2="315" y2="320" gradientUnits="userSpaceOnUse">
+                    <stop offset="0" stop-color="#ffb547" />
+                    <stop offset="1" stop-color="#e87812" />
+                  </linearGradient>
                 </defs>
                 <ellipse cx="195" cy="333" rx="126" ry="17" fill="#17803a" opacity=".10" />
                 <g id="pdyySliceShadowLayer"></g>
@@ -1114,6 +1136,7 @@
                 <circle cx="195" cy="185" r="168" fill="none" stroke="#edf2ef" stroke-width="2" />
                 <circle cx="195" cy="185" r="164" fill="none" stroke="#fff" stroke-width="4" />
                 <g id="pdyySliceSeparatorLayer"></g>
+                <g id="pdyyScanFailedLeaderLayer"></g>
                 <circle cx="195" cy="185" r="105" fill="#fff" />
                 <circle cx="195" cy="185" r="94" fill="#fff" stroke="#e5eae7" stroke-width="2" />
                 <text x="195" y="164" text-anchor="middle" font-size="17" font-weight="800" fill="#666">完成率</text>
@@ -1134,6 +1157,13 @@
                   <span class="pdyy-dash"></span>
                   <span id="pdyyRemainingText" class="pdyy-value">29</span>
                   <span id="pdyyRemainingPercentText" class="pdyy-percent">(25.9%)</span>
+                </div>
+                <div id="pdyyScanFailedRow" class="pdyy-legend-row" hidden>
+                  <span class="pdyy-dot pdyy-dot-scan-failed"></span>
+                  <span class="pdyy-label">已扫码未登记</span>
+                  <span class="pdyy-dash"></span>
+                  <span id="pdyyScanFailedText" class="pdyy-value">0</span>
+                  <span id="pdyyScanFailedPercentText" class="pdyy-percent">(0.0%)</span>
                 </div>
               </div>
             </div>
@@ -1173,6 +1203,7 @@
         const pendingSource = data && data.pending && data.pending.count != null ? data.pending.count : data && data.remaining_count;
         const completedCount = Number(completedSource);
         const pendingCount = Number(pendingSource);
+        const scanFailedCount = Number(data && data.scan2fail_count);
         const total = Number(data && data.total);
         if (!Number.isFinite(completedCount) || !Number.isFinite(pendingCount)) {
           return { completed_count: 0, remaining_count: 0 };
@@ -1180,6 +1211,7 @@
         return {
           completed_count: Math.max(0, completedCount),
           remaining_count: Math.max(0, pendingCount),
+          scan2fail_count: Number.isFinite(scanFailedCount) ? Math.max(0, scanFailedCount) : 0,
           total: Number.isFinite(total) ? Math.max(0, total) : Math.max(0, completedCount) + Math.max(0, pendingCount)
         };
       }
@@ -1188,42 +1220,50 @@
         data = normalizePdyyData(data);
         const completed = Math.max(0, Number(data.completed_count) || 0);
         const remaining = Math.max(0, Number(data.remaining_count) || 0);
-        const total = completed + remaining;
+        const scanFailed = Math.max(0, Number(data.scan2fail_count) || 0);
+        const total = completed + remaining + scanFailed;
         const percentText = document.getElementById("pdyyPercentText");
         const shadowLayer = document.getElementById("pdyySliceShadowLayer");
         const bodyLayer = document.getElementById("pdyySliceBodyLayer");
         const separatorLayer = document.getElementById("pdyySliceSeparatorLayer");
-        if (!percentText || !shadowLayer || !bodyLayer || !separatorLayer) return;
-        if (total <= 0) {
-          pdyyRenderDonut({ completed_count: 1, remaining_count: 99 });
+        const leaderLayer = document.getElementById("pdyyScanFailedLeaderLayer");
+        const scanFailedRow = document.getElementById("pdyyScanFailedRow");
+        if (!percentText || !shadowLayer || !bodyLayer || !separatorLayer || !leaderLayer || !scanFailedRow) return;
+        if (completed + remaining <= 0) {
+          pdyyRenderDonut({ completed_count: 1, remaining_count: 99, scan2fail_count: 0 });
           if (percentText) percentText.textContent = "N/A";
           pdyySetText("pdyyCompletedText", "0");
           pdyySetText("pdyyCompletedPercentText", "(0.0%)");
           pdyySetText("pdyyRemainingText", "0");
           pdyySetText("pdyyRemainingPercentText", "(0.0%)");
+          scanFailedRow.hidden = true;
           document.getElementById("pdyyDonutSvg").setAttribute("aria-label", "早餐状态饼图：暂无数据");
           return;
         }
 
         const completedPercent = completed / total * 100;
         const remainingPercent = remaining / total * 100;
+        const scanFailedPercent = scanFailed / total * 100;
         const svgNamespace = "http://www.w3.org/2000/svg";
         const slices = [
-          { value: completed, fill: "url(#pdyyGradCompleted)" },
-          { value: remaining, fill: "url(#pdyyGradRemaining)" }
+          { key: "completed", value: completed, fill: "url(#pdyyGradCompleted)", shadow: "#0f6f34" },
+          { key: "remaining", value: remaining, fill: "url(#pdyyGradRemaining)", shadow: "#0f6f34" },
+          { key: "scanFailed", value: scanFailed, fill: "url(#pdyyGradScanFailed)", shadow: "#b95b08" }
         ];
         shadowLayer.innerHTML = "";
         bodyLayer.innerHTML = "";
         separatorLayer.innerHTML = "";
+        leaderLayer.innerHTML = "";
         let start = 0;
 
         slices.forEach(slice => {
           const sweep = slice.value / total * 360;
           if (slice.value > 0) {
-            const pathData = detailDonutPath(195, 185, 162, 102, start + .85, start + sweep - .85);
+            const sliceGap = Math.min(.85, sweep * .2);
+            const pathData = detailDonutPath(195, 185, 162, 102, start + sliceGap, start + sweep - sliceGap);
             const shadow = document.createElementNS(svgNamespace, "path");
             shadow.setAttribute("d", pathData);
-            shadow.setAttribute("fill", "#0f6f34");
+            shadow.setAttribute("fill", slice.shadow);
             shadow.setAttribute("opacity", ".12");
             shadow.setAttribute("transform", "translate(0 7)");
             shadowLayer.appendChild(shadow);
@@ -1241,19 +1281,42 @@
             separator.setAttribute("x2", String(outerPoint.x));
             separator.setAttribute("y2", String(outerPoint.y));
             separatorLayer.appendChild(separator);
+
+            if (slice.key === "scanFailed") {
+              const middleAngle = start + sweep / 2;
+              const lineStart = pdyyPolar(195, 185, 163, middleAngle);
+              const lineBend = pdyyPolar(195, 185, 180, middleAngle);
+              const rightSide = Math.cos((middleAngle - 90) * Math.PI / 180) >= 0;
+              const labelY = Math.max(28, Math.min(334, lineBend.y));
+              const lineEndX = rightSide ? 382 : 8;
+              const leader = document.createElementNS(svgNamespace, "path");
+              leader.setAttribute("class", "pdyy-scan-failed-leader");
+              leader.setAttribute("d", `M ${lineStart.x} ${lineStart.y} L ${lineBend.x} ${labelY} L ${lineEndX} ${labelY}`);
+              leaderLayer.appendChild(leader);
+              const label = document.createElementNS(svgNamespace, "text");
+              label.setAttribute("class", "pdyy-scan-failed-label");
+              label.setAttribute("x", String(rightSide ? 384 : 6));
+              label.setAttribute("y", String(labelY - 7));
+              label.setAttribute("text-anchor", rightSide ? "end" : "start");
+              label.textContent = `${scanFailedPercent.toFixed(1)}%`;
+              leaderLayer.appendChild(label);
+            }
           }
           start += sweep;
         });
 
         document.getElementById("pdyyDonutSvg").setAttribute(
           "aria-label",
-          `早餐状态饼图：已完成 ${completed}，剩余 ${remaining}`
+          `早餐状态饼图：已完成 ${completed}，剩余 ${remaining}，已扫码未登记 ${scanFailed}`
         );
         percentText.textContent = `${completedPercent.toFixed(1)}%`;
         pdyySetText("pdyyCompletedText", String(completed));
         pdyySetText("pdyyCompletedPercentText", `(${completedPercent.toFixed(1)}%)`);
         pdyySetText("pdyyRemainingText", String(remaining));
         pdyySetText("pdyyRemainingPercentText", `(${remainingPercent.toFixed(1)}%)`);
+        scanFailedRow.hidden = scanFailed <= 0;
+        pdyySetText("pdyyScanFailedText", String(scanFailed));
+        pdyySetText("pdyyScanFailedPercentText", `(${scanFailedPercent.toFixed(1)}%)`);
       }
 
       function detailDonutPath(cx, cy, outerRadius, innerRadius, startAngle, endAngle) {
@@ -1370,6 +1433,18 @@
       const firstSceneCardContent = firstSceneCard.querySelector(".pdyy-chart-box");
       const firstRoute = params.get("firstRoute") || "";
       const secondRoute = params.get("secondRoute") || "";
+      function readInitialScan2Fail() {
+        let value = Number.parseInt(params.get("scan2fail") || "0", 10) || 0;
+        try {
+          if (window.UIKitInsightScan2Fail && typeof window.UIKitInsightScan2Fail.getValue === "function") {
+            value = Number(window.UIKitInsightScan2Fail.getValue());
+          }
+        } catch (_error) {
+          // Query parameter remains the browser-only fallback.
+        }
+        return Number.isInteger(value) && value >= 0 ? value : 0;
+      }
+      let scan2FailCount = readInitialScan2Fail();
       const expandedStage = document.getElementById("expandedStage");
       const maxHeader = 190;
       const minHeader = 88;
@@ -1481,8 +1556,17 @@
       }
 
       function renderSelectedPeriod() {
-        pdyyRenderDonut(firstRoutePeriods.get(selectedPeriod) || null);
+        const periodData = firstRoutePeriods.get(selectedPeriod);
+        pdyyRenderDonut(periodData ? { ...periodData, scan2fail_count: scan2FailCount } : null);
       }
+
+      window.UIKitInsightFix2Fail = value => {
+        const nextValue = Number(value);
+        if (!Number.isInteger(nextValue) || nextValue < 0) return false;
+        scan2FailCount = nextValue;
+        renderSelectedPeriod();
+        return true;
+      };
 
       function selectStatisticsPeriod(period, focusButton = false) {
         if (!["day", "month", "year"].includes(period)) return;

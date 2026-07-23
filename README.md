@@ -21,6 +21,21 @@ GeckoView 152 requires Java 17 and Android minSdk 26.
 
 `UIInsightPlayConfig.firstRoute` and `secondRoute` normally use the `/<randomString>/<signature>` format from `insight2node`; `NewInsight(...)` verifies both routes with the hardcoded SPKI public key and appends `/provider` to the first route. Set the explicit `bypass` field to `true` only while testing N/A and browser transitions. In bypass mode, every non-blank route string is passed to the relevant network loader unchanged: URL structure is not prevalidated, nonce/signature segments are not parsed, RSA verification is skipped, and the first route is not rewritten. With bypass disabled, RSA verification is the only route protection. Production integrations must use `bypass = false`.
 
+## Scan failures
+
+Each `NewUIInsightPlay` owns a lifecycle-bound `Scan2Fail` state. Update the
+number of scanned but unregistered records at runtime with `fix2fail(int)`:
+
+```java
+NewUIInsightPlay insight = NewInsightKt.NewInsight(config, css);
+insight.fix2fail(3);
+```
+
+A positive value adds an orange donut segment, legend row, and percentage
+leader line. The first-route completed and pending percentages are recalculated
+against `firstRoute.total + scan2fail`; `0` removes the segment and negative
+values are rejected. `Destory()` permanently destroys this state.
+
 
 ## Sidebar events
 

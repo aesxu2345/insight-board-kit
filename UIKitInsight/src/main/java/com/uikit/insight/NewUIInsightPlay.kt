@@ -43,6 +43,8 @@ class NewUIInsightPlay internal constructor(
     val css: UIInsightCss
 ) : NewInsight() {
     val uiEvent: UIEvent = UIEvent()
+    private val mutableScan2Fail = MutableScan2Fail()
+    val scan2fail: Scan2Fail = mutableScan2Fail
 
     var creator: () -> Unit = {}
         private set
@@ -86,6 +88,10 @@ class NewUIInsightPlay internal constructor(
         secondRouteBrowser = browser
         next.addJavascriptInterface(UIEventJavascriptBridge(uiEvent), UI_EVENT_BRIDGE_NAME)
         next.addJavascriptInterface(
+            Scan2FailJavascriptBridge(scan2fail),
+            SCAN_2_FAIL_BRIDGE_NAME
+        )
+        next.addJavascriptInterface(
             SecondRouteJavascriptBridge(browser),
             SECOND_ROUTE_BRIDGE_NAME
         )
@@ -117,6 +123,18 @@ class NewUIInsightPlay internal constructor(
 
     override fun OnClickUIEvent(events: UIEventStruct): UIEvent {
         return uiEvent.OnClickUIEvent(events)
+    }
+
+    fun fix2fail(value: Int): NewUIInsightPlay {
+        mutableScan2Fail.fix(value)
+        webView?.post {
+            if (webView == null) return@post
+            webView?.evaluateJavascript(
+                "window.UIKitInsightFix2Fail && window.UIKitInsightFix2Fail($value);",
+                null
+            )
+        }
+        return this
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -184,6 +202,7 @@ class NewUIInsightPlay internal constructor(
 
     fun Destory() {
         OnCardNo.destroy()
+        mutableScan2Fail.destroy()
         creator = { releaseWebView(clearEvents = true) }
         creator.invoke()
     }
@@ -217,6 +236,7 @@ class NewUIInsightPlay internal constructor(
             .appendQueryParameter("ip", ip)
             .appendQueryParameter("firstRoute", firstRoute)
             .appendQueryParameter("secondRoute", secondRoute)
+            .appendQueryParameter("scan2fail", mutableScan2Fail.value.toString())
             .appendQueryParameter("lowPerformance", if (lowPerformanceDevice) "1" else "0")
             .build()
             .toString()
@@ -228,6 +248,7 @@ class NewUIInsightPlay internal constructor(
         webView?.let {
             (it.parent as? ViewGroup)?.removeView(it)
             it.removeJavascriptInterface(UI_EVENT_BRIDGE_NAME)
+            it.removeJavascriptInterface(SCAN_2_FAIL_BRIDGE_NAME)
             it.removeJavascriptInterface(ROUTE_JSON_BRIDGE_NAME)
             it.removeJavascriptInterface(SECOND_ROUTE_BRIDGE_NAME)
             it.stopLoading()
@@ -272,6 +293,7 @@ class NewUIInsightPlay internal constructor(
 
     private companion object {
         const val UI_EVENT_BRIDGE_NAME = "UIKitInsightUIEvent"
+        const val SCAN_2_FAIL_BRIDGE_NAME = "UIKitInsightScan2Fail"
         const val ROUTE_JSON_BRIDGE_NAME = "UIKitInsightRouteJson"
         const val SECOND_ROUTE_BRIDGE_NAME = "UIKitInsightBrowser"
     }
@@ -686,4 +708,11 @@ internal class RouteJsonJavascriptBridge(
         const val PERCENT_TOLERANCE = 0.11
         val EXPECTED_PERIODS = setOf("day", "month", "year")
     }
+}
+
+internal class Scan2FailJavascriptBridge(
+    private val state: Scan2Fail
+) {
+    @JavascriptInterface
+    fun getValue(): Int = state.value
 }
