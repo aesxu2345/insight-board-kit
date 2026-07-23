@@ -631,10 +631,6 @@
         font-size: 15px;
       }
 
-      .pdyy-legend-row[hidden] {
-        display: none !important;
-      }
-
       .pdyy-dot {
         width: 14px;
         height: 14px;
@@ -1159,7 +1155,7 @@
                   <span id="pdyyRemainingText" class="pdyy-value">29</span>
                   <span id="pdyyRemainingPercentText" class="pdyy-percent">(25.9%)</span>
                 </div>
-                <div id="pdyyScanFailedRow" class="pdyy-legend-row" hidden>
+                <div id="pdyyScanFailedRow" class="pdyy-legend-row">
                   <span class="pdyy-dot pdyy-dot-scan-failed"></span>
                   <span class="pdyy-label">已扫码未登记</span>
                   <span class="pdyy-dash"></span>
@@ -1237,7 +1233,8 @@
           pdyySetText("pdyyCompletedPercentText", "(0.0%)");
           pdyySetText("pdyyRemainingText", "0");
           pdyySetText("pdyyRemainingPercentText", "(0.0%)");
-          setScanFailedRowVisible(scanFailedRow, false);
+          pdyySetText("pdyyScanFailedText", "0");
+          pdyySetText("pdyyScanFailedPercentText", "(0.0%)");
           document.getElementById("pdyyDonutSvg").setAttribute("aria-label", "早餐状态饼图：暂无数据");
           reconcileCardLayout();
           return;
@@ -1316,7 +1313,6 @@
         pdyySetText("pdyyCompletedPercentText", `(${completedPercent.toFixed(1)}%)`);
         pdyySetText("pdyyRemainingText", String(remaining));
         pdyySetText("pdyyRemainingPercentText", `(${remainingPercent.toFixed(1)}%)`);
-        setScanFailedRowVisible(scanFailedRow, scanFailed > 0);
         pdyySetText("pdyyScanFailedText", String(scanFailed));
         pdyySetText("pdyyScanFailedPercentText", `(${scanFailedPercent.toFixed(1)}%)`);
         reconcileCardLayout();
@@ -1729,12 +1725,6 @@
           const maxScroll = Math.max(0, firstSceneCard.scrollHeight - firstSceneCard.clientHeight);
           if (firstSceneCard.scrollTop > maxScroll) firstSceneCard.scrollTop = maxScroll;
         });
-      }
-
-      function setScanFailedRowVisible(row, visible) {
-        const hidden = !visible;
-        if (row.hidden !== hidden) firstSceneCard.scrollTop = 0;
-        row.hidden = hidden;
       }
 
       function bindVerticalGesture(element, handlers) {
