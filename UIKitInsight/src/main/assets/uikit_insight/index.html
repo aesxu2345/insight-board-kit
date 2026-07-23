@@ -664,6 +664,16 @@
         font-weight: 800;
       }
 
+      #pdyyScanFailedLeaderLayer {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .18s ease;
+      }
+
+      #pdyyScanFailedLeaderLayer.is-visible {
+        opacity: 1;
+      }
+
       .pdyy-label {
         color: #222;
         font-weight: 500;
@@ -1141,6 +1151,13 @@
               </svg>
 
               <div class="pdyy-legend-card" aria-label="早餐状态图例">
+                <div id="pdyyScanFailedRow" class="pdyy-legend-row">
+                  <span class="pdyy-dot pdyy-dot-scan-failed"></span>
+                  <span class="pdyy-label">已扫码未登记</span>
+                  <span class="pdyy-dash"></span>
+                  <span id="pdyyScanFailedText" class="pdyy-value">0</span>
+                  <span id="pdyyScanFailedPercentText" class="pdyy-percent">(0.0%)</span>
+                </div>
                 <div class="pdyy-legend-row">
                   <span class="pdyy-dot pdyy-dot-completed"></span>
                   <span class="pdyy-label">已完成</span>
@@ -1154,13 +1171,6 @@
                   <span class="pdyy-dash"></span>
                   <span id="pdyyRemainingText" class="pdyy-value">29</span>
                   <span id="pdyyRemainingPercentText" class="pdyy-percent">(25.9%)</span>
-                </div>
-                <div id="pdyyScanFailedRow" class="pdyy-legend-row">
-                  <span class="pdyy-dot pdyy-dot-scan-failed"></span>
-                  <span class="pdyy-label">已扫码未登记</span>
-                  <span class="pdyy-dash"></span>
-                  <span id="pdyyScanFailedText" class="pdyy-value">0</span>
-                  <span id="pdyyScanFailedPercentText" class="pdyy-percent">(0.0%)</span>
                 </div>
               </div>
             </div>
@@ -1429,6 +1439,8 @@
       const scanButton = document.getElementById("scanButton");
       const scanLabel = document.getElementById("scanLabel");
       const firstSceneCard = document.getElementById("firstSceneCard");
+      const pdyyDonutSvg = document.getElementById("pdyyDonutSvg");
+      const pdyyScanFailedLeaderLayer = document.getElementById("pdyyScanFailedLeaderLayer");
       const firstRoute = params.get("firstRoute") || "";
       const secondRoute = params.get("secondRoute") || "";
       function readInitialScan2Fail() {
@@ -1476,9 +1488,28 @@
       let scannerDragging = false;
       let scannerSettleFrame = 0;
       let suppressScanClickUntil = 0;
+      let scanFailedLeaderTimer = 0;
       const scannerPullThreshold = 64;
       const scannerPullMax = 110;
       const secondRouteRetryDelay = 10000;
+
+      function showScanFailedLeader() {
+        if (!pdyyScanFailedLeaderLayer || !pdyyScanFailedLeaderLayer.childElementCount) return;
+        pdyyScanFailedLeaderLayer.classList.add("is-visible");
+        if (scanFailedLeaderTimer) clearTimeout(scanFailedLeaderTimer);
+        scanFailedLeaderTimer = window.setTimeout(() => {
+          pdyyScanFailedLeaderLayer.classList.remove("is-visible");
+          scanFailedLeaderTimer = 0;
+        }, 4000);
+      }
+
+      if (pdyyDonutSvg) {
+        if ("PointerEvent" in window) {
+          pdyyDonutSvg.addEventListener("pointerdown", showScanFailedLeader, { passive: true });
+        } else {
+          pdyyDonutSvg.addEventListener("touchstart", showScanFailedLeader, { passive: true });
+        }
+      }
 
       function setDrawerOpen(open) {
         drawerOpen = Boolean(open);
