@@ -17,7 +17,7 @@ data class UIInsightCss(
             userMessage = "第一幕数据路由无效，已显示 N/A",
             errors = routeErrors
         ) {
-            SignedRouteVerifier.requireWebProviderRoute(
+            SignedRouteVerifier.requireProviderRoute(
                 config.firstRoute,
                 "firstRoute",
                 bypassSignature = config.bypass

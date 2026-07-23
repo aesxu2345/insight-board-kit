@@ -9,12 +9,17 @@ import android.widget.Toast;
 
 import com.uikit.insight.NewInsightKt;
 import com.uikit.insight.NewUIInsightPlay;
+import com.uikit.insight.OnCardNo;
 import com.uikit.insight.UIInsightCss;
 import com.uikit.insight.UIInsightPlayConfig;
 import com.uikit.insight.UIEventStruct;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class MainActivity extends Activity {
     private NewUIInsightPlay insight;
+    private ExecutorService cardNoExecutor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +47,15 @@ public class MainActivity extends Activity {
                 "#18813b"
         );
         insight = NewInsightKt.NewInsight(new DemoConfig(), css);
+        insight.fix2fail(1);
+        insight.getOnCardNo().enroll(new OnCardNo() {
+            @Override
+            public void event(String str) {
+                runOnUiThread(() -> showSelection("体检编号: " + str));
+            }
+        });
+        cardNoExecutor = Executors.newSingleThreadExecutor();
+        cardNoExecutor.execute(() -> insight.getOnCardNo().run());
         insight.OnClickUIEvent(new UIEventStruct() {
             @Override
             public void onOpenScanner() {
@@ -80,6 +94,9 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         if (insight != null) {
             insight.Destory();
+        }
+        if (cardNoExecutor != null) {
+            cardNoExecutor.shutdownNow();
         }
         super.onDestroy();
     }

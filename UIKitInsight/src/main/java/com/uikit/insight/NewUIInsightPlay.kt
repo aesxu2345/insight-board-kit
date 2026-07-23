@@ -20,6 +20,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.Toast
+import org.json.JSONArray
 import org.json.JSONObject
 import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.GeckoResult
@@ -42,6 +43,8 @@ class NewUIInsightPlay internal constructor(
     val css: UIInsightCss
 ) : NewInsight() {
     val uiEvent: UIEvent = UIEvent()
+    private val mutableScan2Fail = MutableScan2Fail()
+    val scan2fail: Scan2Fail = mutableScan2Fail
 
     var creator: () -> Unit = {}
         private set
@@ -60,7 +63,7 @@ class NewUIInsightPlay internal constructor(
         val browser = GeckoSecondRouteController(
             host = next,
             secondRoute = secondRoute,
-            onCardNo = ::OnCardNo,
+            onCardNo = OnCardNo::publish,
             onRequestFirstScene = {
                 next.post {
                     if (webView !== next) return@post
@@ -85,11 +88,15 @@ class NewUIInsightPlay internal constructor(
         secondRouteBrowser = browser
         next.addJavascriptInterface(UIEventJavascriptBridge(uiEvent), UI_EVENT_BRIDGE_NAME)
         next.addJavascriptInterface(
+            Scan2FailJavascriptBridge(scan2fail),
+            SCAN_2_FAIL_BRIDGE_NAME
+        )
+        next.addJavascriptInterface(
             SecondRouteJavascriptBridge(browser),
             SECOND_ROUTE_BRIDGE_NAME
         )
         next.addJavascriptInterface(
-            RouteJsonJavascriptBridge(firstRoute) { json ->
+            RouteJsonJavascriptBridge(next.context.applicationContext, firstRoute) { json ->
                 next.post {
                     if (webView !== next) return@post
                     val quotedJson = JSONObject.quote(json)
@@ -116,6 +123,18 @@ class NewUIInsightPlay internal constructor(
 
     override fun OnClickUIEvent(events: UIEventStruct): UIEvent {
         return uiEvent.OnClickUIEvent(events)
+    }
+
+    fun fix2fail(value: Int): NewUIInsightPlay {
+        mutableScan2Fail.fix(value)
+        webView?.post {
+            if (webView == null) return@post
+            webView?.evaluateJavascript(
+                "window.UIKitInsightFix2Fail && window.UIKitInsightFix2Fail($value);",
+                null
+            )
+        }
+        return this
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -182,6 +201,8 @@ class NewUIInsightPlay internal constructor(
     }
 
     fun Destory() {
+        OnCardNo.destroy()
+        mutableScan2Fail.destroy()
         creator = { releaseWebView(clearEvents = true) }
         creator.invoke()
     }
@@ -215,6 +236,7 @@ class NewUIInsightPlay internal constructor(
             .appendQueryParameter("ip", ip)
             .appendQueryParameter("firstRoute", firstRoute)
             .appendQueryParameter("secondRoute", secondRoute)
+            .appendQueryParameter("scan2fail", mutableScan2Fail.value.toString())
             .appendQueryParameter("lowPerformance", if (lowPerformanceDevice) "1" else "0")
             .build()
             .toString()
@@ -226,6 +248,7 @@ class NewUIInsightPlay internal constructor(
         webView?.let {
             (it.parent as? ViewGroup)?.removeView(it)
             it.removeJavascriptInterface(UI_EVENT_BRIDGE_NAME)
+            it.removeJavascriptInterface(SCAN_2_FAIL_BRIDGE_NAME)
             it.removeJavascriptInterface(ROUTE_JSON_BRIDGE_NAME)
             it.removeJavascriptInterface(SECOND_ROUTE_BRIDGE_NAME)
             it.stopLoading()
@@ -270,6 +293,7 @@ class NewUIInsightPlay internal constructor(
 
     private companion object {
         const val UI_EVENT_BRIDGE_NAME = "UIKitInsightUIEvent"
+        const val SCAN_2_FAIL_BRIDGE_NAME = "UIKitInsightScan2Fail"
         const val ROUTE_JSON_BRIDGE_NAME = "UIKitInsightRouteJson"
         const val SECOND_ROUTE_BRIDGE_NAME = "UIKitInsightBrowser"
     }
@@ -536,7 +560,7 @@ internal class GeckoSecondRouteController(
         const val ABOUT_BLANK = "about:blank"
         val BROWSER_COVER_COLOR = Color.rgb(247, 250, 247)
         const val COLLAPSE_GESTURE_DP = 64f
-        const val COMPACT_HEADER_DP = 44f
+        const val COMPACT_HEADER_DP = 28f
 
         @Volatile
         private var sharedRuntime: GeckoRuntime? = null
@@ -570,11 +594,14 @@ internal class GeckoSecondRouteController(
 }
 
 internal class RouteJsonJavascriptBridge(
+    private val context: Context,
     private val firstRoute: String,
     private val onLoaded: (String) -> Unit
 ) {
     @Volatile
     private var requestStarted = false
+    private var consecutiveFailures = 0
+    private var healthPromptShown = false
 
     @JavascriptInterface
     fun loadFirstRouteJson() {
@@ -592,17 +619,100 @@ internal class RouteJsonJavascriptBridge(
                     setRequestProperty("Accept", "application/json")
                 }
                 try {
-                    val stream = if (connection.responseCode in 200..299) {
-                        connection.inputStream
-                    } else {
-                        connection.errorStream
-                    }
-                    stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+                    if (connection.responseCode !in 200..299) return@runCatching ""
+                    connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
                 } finally {
                     connection.disconnect()
                 }
             }.getOrDefault("")
+            val validDataReceived = isValidPeriodPayload(json)
+            val showHealthPrompt = synchronized(this) {
+                requestStarted = false
+                if (healthPromptShown) {
+                    false
+                } else if (validDataReceived) {
+                    consecutiveFailures = 0
+                    false
+                } else {
+                    consecutiveFailures += 1
+                    if (consecutiveFailures >= MAX_HEALTH_FAILURES) {
+                        healthPromptShown = true
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+            if (showHealthPrompt) {
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(
+                        context,
+                        "第一路由连续 10 次未获取到有效数据，请检查数据服务",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
             onLoaded(json)
         }, "UIKitInsight-first-route").start()
     }
+
+    private fun isValidPeriodPayload(json: String): Boolean = runCatching {
+        val payload = JSONArray(json)
+        if (payload.length() != EXPECTED_PERIODS.size) return@runCatching false
+        val receivedPeriods = mutableSetOf<String>()
+        for (index in 0 until payload.length()) {
+            val record = payload.getJSONObject(index)
+            val period = record.getString("period")
+            if (period !in EXPECTED_PERIODS || !receivedPeriods.add(period)) {
+                return@runCatching false
+            }
+            val completed = record.getJSONObject("completed")
+            val pending = record.getJSONObject("pending")
+            val completedCount = completed.validCount("count") ?: return@runCatching false
+            val pendingCount = pending.validCount("count") ?: return@runCatching false
+            val total = record.validCount("total") ?: return@runCatching false
+            val completedPercentage = completed.validPercentage("percentage")
+                ?: return@runCatching false
+            val pendingPercentage = pending.validPercentage("percentage")
+                ?: return@runCatching false
+            if (completedCount + pendingCount != total) return@runCatching false
+            if (total == 0L) {
+                if (completedPercentage != 0.0 || pendingPercentage != 0.0) {
+                    return@runCatching false
+                }
+            } else {
+                val expectedCompleted = completedCount.toDouble() / total * 100.0
+                val expectedPending = pendingCount.toDouble() / total * 100.0
+                if (kotlin.math.abs(completedPercentage - expectedCompleted) > PERCENT_TOLERANCE ||
+                    kotlin.math.abs(pendingPercentage - expectedPending) > PERCENT_TOLERANCE
+                ) return@runCatching false
+            }
+        }
+        receivedPeriods == EXPECTED_PERIODS
+    }.getOrDefault(false)
+
+    private fun JSONObject.validCount(name: String): Long? {
+        val value = opt(name) as? Number ?: return null
+        val numeric = value.toDouble()
+        if (!numeric.isFinite() || numeric < 0 || numeric % 1.0 != 0.0) return null
+        return numeric.toLong()
+    }
+
+    private fun JSONObject.validPercentage(name: String): Double? {
+        val value = (opt(name) as? Number)?.toDouble() ?: return null
+        return value.takeIf { it.isFinite() && it in 0.0..100.0 }
+    }
+
+    private companion object {
+        const val MAX_HEALTH_FAILURES = 10
+        const val PERCENT_TOLERANCE = 0.11
+        val EXPECTED_PERIODS = setOf("day", "month", "year")
+    }
+}
+
+internal class Scan2FailJavascriptBridge(
+    private val state: Scan2Fail
+) {
+    @JavascriptInterface
+    fun getValue(): Int = state.value
 }

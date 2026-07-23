@@ -195,24 +195,43 @@
         transform: translateX(-50%);
         z-index: 3;
         height: 38px;
-        width: 116px;
+        width: 198px;
+        padding: 3px;
         border-radius: 999px;
         border: 1px solid rgba(255, 255, 255, .45);
         background: rgba(255, 255, 255, .055);
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 14px;
-        font-size: 16px;
-        font-weight: 620;
+        justify-content: stretch;
+        gap: 2px;
         color: rgba(255, 255, 255, .95);
         text-shadow: 0 1px 8px rgba(0, 0, 0, .06);
       }
 
-      .date-icon {
-        width: 19px;
-        height: 19px;
-        flex: 0 0 auto;
+      .period-option {
+        min-width: 0;
+        height: 30px;
+        flex: 1 1 0;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(255, 255, 255, .76);
+        font-size: 14px;
+        font-weight: 580;
+        line-height: 30px;
+        text-align: center;
+      }
+
+      .period-option[aria-selected="true"] {
+        background: rgba(255, 255, 255, .2);
+        color: #fff;
+        font-weight: 680;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16);
+      }
+
+      .period-option:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, .92);
+        outline-offset: -2px;
       }
 
       .qr-watermark {
@@ -537,17 +556,13 @@
       .board-white {
         position: relative;
         z-index: 4;
-        display: flex;
+        display: block;
         width: calc(100vw - 96px);
         max-width: var(--panel-max);
         min-height: clamp(420px, calc(100dvh - var(--header-height) - 145px), 640px);
         flex: 1 1 0;
         margin-left: auto;
         margin-right: auto;
-        flex-direction: column;
-        align-items: center;
-        justify-content: stretch;
-        gap: 8px;
         padding: 14px 12px 16px;
         border-radius: 19px;
         border: 1px solid rgba(0, 0, 0, .05);
@@ -556,33 +571,34 @@
         box-shadow:
           0 18px 42px rgba(35, 112, 61, .09),
           0 4px 14px rgba(17, 55, 31, .035);
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
         contain: layout paint;
-        touch-action: none;
+        touch-action: pan-y;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .board-white::-webkit-scrollbar {
+        display: none;
       }
 
       .pdyy-chart-box {
-        display: grid;
-        grid-template-rows: minmax(0, 1fr) auto;
+        display: flex;
         width: 100%;
-        height: 100%;
-        min-height: 0;
-        flex: 1 1 0;
+        min-height: 100%;
+        flex-direction: column;
         align-items: center;
-        justify-items: center;
         padding-top: 16px;
-        will-change: transform;
       }
 
       .pdyy-donut-svg {
         display: block;
-        width: auto;
-        max-width: 100%;
-        height: 100%;
-        min-height: 0;
-        max-height: 370px;
-        align-self: center;
-        justify-self: center;
+        width: 100%;
+        max-width: 370px;
+        height: auto;
+        flex: 0 0 auto;
         aspect-ratio: 1;
         overflow: visible;
       }
@@ -628,6 +644,24 @@
 
       .pdyy-dot-remaining {
         background: #82d166;
+      }
+
+      .pdyy-dot-scan-failed {
+        background: #ee8a1a;
+      }
+
+      .pdyy-scan-failed-leader {
+        fill: none;
+        stroke: #d96f0d;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .pdyy-scan-failed-label {
+        fill: #b95b08;
+        font-size: 13px;
+        font-weight: 800;
       }
 
       .pdyy-label {
@@ -1002,12 +1036,11 @@
             <h1 id="title" class="route-title truncate text-center tracking-normal">早餐状态饼图</h1>
           </div>
 
-          <button class="date-pill">
-            <span>今日</span>
-            <svg class="date-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 3v4M17 3v4M4 9h16M5 5h14v15H5z" />
-            </svg>
-          </button>
+          <div class="date-pill" role="tablist" aria-label="统计周期">
+            <button class="period-option" type="button" role="tab" data-period="day" aria-selected="true" tabindex="0">今日</button>
+            <button class="period-option" type="button" role="tab" data-period="month" aria-selected="false" tabindex="-1">本月</button>
+            <button class="period-option" type="button" role="tab" data-period="year" aria-selected="false" tabindex="-1">今年</button>
+          </div>
         </div>
 
         <div class="qr-watermark"></div>
@@ -1089,6 +1122,10 @@
                     <stop offset="0" stop-color="#b7e98d" />
                     <stop offset="1" stop-color="#8bd065" />
                   </linearGradient>
+                  <linearGradient id="pdyyGradScanFailed" x1="80" y1="40" x2="315" y2="320" gradientUnits="userSpaceOnUse">
+                    <stop offset="0" stop-color="#ffb547" />
+                    <stop offset="1" stop-color="#e87812" />
+                  </linearGradient>
                 </defs>
                 <ellipse cx="195" cy="333" rx="126" ry="17" fill="#17803a" opacity=".10" />
                 <g id="pdyySliceShadowLayer"></g>
@@ -1096,6 +1133,7 @@
                 <circle cx="195" cy="185" r="168" fill="none" stroke="#edf2ef" stroke-width="2" />
                 <circle cx="195" cy="185" r="164" fill="none" stroke="#fff" stroke-width="4" />
                 <g id="pdyySliceSeparatorLayer"></g>
+                <g id="pdyyScanFailedLeaderLayer"></g>
                 <circle cx="195" cy="185" r="105" fill="#fff" />
                 <circle cx="195" cy="185" r="94" fill="#fff" stroke="#e5eae7" stroke-width="2" />
                 <text x="195" y="164" text-anchor="middle" font-size="17" font-weight="800" fill="#666">完成率</text>
@@ -1116,6 +1154,13 @@
                   <span class="pdyy-dash"></span>
                   <span id="pdyyRemainingText" class="pdyy-value">29</span>
                   <span id="pdyyRemainingPercentText" class="pdyy-percent">(25.9%)</span>
+                </div>
+                <div id="pdyyScanFailedRow" class="pdyy-legend-row">
+                  <span class="pdyy-dot pdyy-dot-scan-failed"></span>
+                  <span class="pdyy-label">已扫码未登记</span>
+                  <span class="pdyy-dash"></span>
+                  <span id="pdyyScanFailedText" class="pdyy-value">0</span>
+                  <span id="pdyyScanFailedPercentText" class="pdyy-percent">(0.0%)</span>
                 </div>
               </div>
             </div>
@@ -1155,6 +1200,7 @@
         const pendingSource = data && data.pending && data.pending.count != null ? data.pending.count : data && data.remaining_count;
         const completedCount = Number(completedSource);
         const pendingCount = Number(pendingSource);
+        const scanFailedCount = Number(data && data.scan2fail_count);
         const total = Number(data && data.total);
         if (!Number.isFinite(completedCount) || !Number.isFinite(pendingCount)) {
           return { completed_count: 0, remaining_count: 0 };
@@ -1162,6 +1208,7 @@
         return {
           completed_count: Math.max(0, completedCount),
           remaining_count: Math.max(0, pendingCount),
+          scan2fail_count: Number.isFinite(scanFailedCount) ? Math.max(0, scanFailedCount) : 0,
           total: Number.isFinite(total) ? Math.max(0, total) : Math.max(0, completedCount) + Math.max(0, pendingCount)
         };
       }
@@ -1170,42 +1217,52 @@
         data = normalizePdyyData(data);
         const completed = Math.max(0, Number(data.completed_count) || 0);
         const remaining = Math.max(0, Number(data.remaining_count) || 0);
-        const total = completed + remaining;
+        const scanFailed = Math.max(0, Number(data.scan2fail_count) || 0);
+        const total = completed + remaining + scanFailed;
         const percentText = document.getElementById("pdyyPercentText");
         const shadowLayer = document.getElementById("pdyySliceShadowLayer");
         const bodyLayer = document.getElementById("pdyySliceBodyLayer");
         const separatorLayer = document.getElementById("pdyySliceSeparatorLayer");
-        if (!percentText || !shadowLayer || !bodyLayer || !separatorLayer) return;
-        if (total <= 0) {
-          pdyyRenderDonut({ completed_count: 1, remaining_count: 99 });
+        const leaderLayer = document.getElementById("pdyyScanFailedLeaderLayer");
+        const scanFailedRow = document.getElementById("pdyyScanFailedRow");
+        if (!percentText || !shadowLayer || !bodyLayer || !separatorLayer || !leaderLayer || !scanFailedRow) return;
+        if (completed + remaining <= 0) {
+          pdyyRenderDonut({ completed_count: 1, remaining_count: 99, scan2fail_count: 0 });
           if (percentText) percentText.textContent = "N/A";
           pdyySetText("pdyyCompletedText", "0");
           pdyySetText("pdyyCompletedPercentText", "(0.0%)");
           pdyySetText("pdyyRemainingText", "0");
           pdyySetText("pdyyRemainingPercentText", "(0.0%)");
+          pdyySetText("pdyyScanFailedText", "0");
+          pdyySetText("pdyyScanFailedPercentText", "(0.0%)");
           document.getElementById("pdyyDonutSvg").setAttribute("aria-label", "早餐状态饼图：暂无数据");
+          reconcileCardLayout();
           return;
         }
 
         const completedPercent = completed / total * 100;
         const remainingPercent = remaining / total * 100;
+        const scanFailedPercent = scanFailed / total * 100;
         const svgNamespace = "http://www.w3.org/2000/svg";
         const slices = [
-          { value: completed, fill: "url(#pdyyGradCompleted)" },
-          { value: remaining, fill: "url(#pdyyGradRemaining)" }
+          { key: "completed", value: completed, fill: "url(#pdyyGradCompleted)", shadow: "#0f6f34" },
+          { key: "remaining", value: remaining, fill: "url(#pdyyGradRemaining)", shadow: "#0f6f34" },
+          { key: "scanFailed", value: scanFailed, fill: "url(#pdyyGradScanFailed)", shadow: "#b95b08" }
         ];
         shadowLayer.innerHTML = "";
         bodyLayer.innerHTML = "";
         separatorLayer.innerHTML = "";
+        leaderLayer.innerHTML = "";
         let start = 0;
 
         slices.forEach(slice => {
           const sweep = slice.value / total * 360;
           if (slice.value > 0) {
-            const pathData = detailDonutPath(195, 185, 162, 102, start + .85, start + sweep - .85);
+            const sliceGap = Math.min(.85, sweep * .2);
+            const pathData = detailDonutPath(195, 185, 162, 102, start + sliceGap, start + sweep - sliceGap);
             const shadow = document.createElementNS(svgNamespace, "path");
             shadow.setAttribute("d", pathData);
-            shadow.setAttribute("fill", "#0f6f34");
+            shadow.setAttribute("fill", slice.shadow);
             shadow.setAttribute("opacity", ".12");
             shadow.setAttribute("transform", "translate(0 7)");
             shadowLayer.appendChild(shadow);
@@ -1223,19 +1280,42 @@
             separator.setAttribute("x2", String(outerPoint.x));
             separator.setAttribute("y2", String(outerPoint.y));
             separatorLayer.appendChild(separator);
+
+            if (slice.key === "scanFailed") {
+              const middleAngle = start + sweep / 2;
+              const lineStart = pdyyPolar(195, 185, 163, middleAngle);
+              const lineBend = pdyyPolar(195, 185, 180, middleAngle);
+              const rightSide = Math.cos((middleAngle - 90) * Math.PI / 180) >= 0;
+              const labelY = Math.max(28, Math.min(334, lineBend.y));
+              const lineEndX = rightSide ? 382 : 8;
+              const leader = document.createElementNS(svgNamespace, "path");
+              leader.setAttribute("class", "pdyy-scan-failed-leader");
+              leader.setAttribute("d", `M ${lineStart.x} ${lineStart.y} L ${lineBend.x} ${labelY} L ${lineEndX} ${labelY}`);
+              leaderLayer.appendChild(leader);
+              const label = document.createElementNS(svgNamespace, "text");
+              label.setAttribute("class", "pdyy-scan-failed-label");
+              label.setAttribute("x", String(rightSide ? 384 : 6));
+              label.setAttribute("y", String(labelY - 7));
+              label.setAttribute("text-anchor", rightSide ? "end" : "start");
+              label.textContent = `${scanFailedPercent.toFixed(1)}%`;
+              leaderLayer.appendChild(label);
+            }
           }
           start += sweep;
         });
 
         document.getElementById("pdyyDonutSvg").setAttribute(
           "aria-label",
-          `早餐状态饼图：已完成 ${completed}，剩余 ${remaining}`
+          `早餐状态饼图：已完成 ${completed}，剩余 ${remaining}，已扫码未登记 ${scanFailed}`
         );
         percentText.textContent = `${completedPercent.toFixed(1)}%`;
         pdyySetText("pdyyCompletedText", String(completed));
         pdyySetText("pdyyCompletedPercentText", `(${completedPercent.toFixed(1)}%)`);
         pdyySetText("pdyyRemainingText", String(remaining));
         pdyySetText("pdyyRemainingPercentText", `(${remainingPercent.toFixed(1)}%)`);
+        pdyySetText("pdyyScanFailedText", String(scanFailed));
+        pdyySetText("pdyyScanFailedPercentText", `(${scanFailedPercent.toFixed(1)}%)`);
+        reconcileCardLayout();
       }
 
       function detailDonutPath(cx, cy, outerRadius, innerRadius, startAngle, endAngle) {
@@ -1343,14 +1423,26 @@
       const drawerPanel = document.getElementById("drawerPanel");
       const drawerClose = document.getElementById("drawerClose");
       const drawerItems = Array.from(document.querySelectorAll(".drawer-item[data-drawer-key]"));
+      const periodButtons = Array.from(document.querySelectorAll(".period-option[data-period]"));
       document.body.appendChild(drawerOverlay);
       const scanPullZone = document.getElementById("scanPullZone");
       const scanButton = document.getElementById("scanButton");
       const scanLabel = document.getElementById("scanLabel");
       const firstSceneCard = document.getElementById("firstSceneCard");
-      const firstSceneCardContent = firstSceneCard.querySelector(".pdyy-chart-box");
       const firstRoute = params.get("firstRoute") || "";
       const secondRoute = params.get("secondRoute") || "";
+      function readInitialScan2Fail() {
+        let value = Number.parseInt(params.get("scan2fail") || "0", 10) || 0;
+        try {
+          if (window.UIKitInsightScan2Fail && typeof window.UIKitInsightScan2Fail.getValue === "function") {
+            value = Number(window.UIKitInsightScan2Fail.getValue());
+          }
+        } catch (_error) {
+          // Query parameter remains the browser-only fallback.
+        }
+        return Number.isInteger(value) && value >= 0 ? value : 0;
+      }
+      let scan2FailCount = readInitialScan2Fail();
       const expandedStage = document.getElementById("expandedStage");
       const maxHeader = 190;
       const minHeader = 88;
@@ -1377,19 +1469,13 @@
       let secondRouteRetryLoading = false;
       let secondRouteRetryTimer = 0;
       let nativeBrowserVisible = false;
+      let selectedPeriod = "day";
+      const firstRoutePeriods = new Map();
       let scannerStartY = 0;
       let scannerPull = 0;
       let scannerDragging = false;
       let scannerSettleFrame = 0;
       let suppressScanClickUntil = 0;
-      let cardOffset = 0;
-      let cardStartOffset = 0;
-      let cardStartY = 0;
-      let cardLastY = 0;
-      let cardLastTime = 0;
-      let cardVelocity = 0;
-      let cardDragging = false;
-      let cardSettleFrame = 0;
       const scannerPullThreshold = 64;
       const scannerPullMax = 110;
       const secondRouteRetryDelay = 10000;
@@ -1422,28 +1508,106 @@
       function renderFirstRouteJson(raw) {
         try {
           const payload = JSON.parse(raw);
-          pdyyRenderDonut(payload);
+          if (!Array.isArray(payload) || payload.length !== 3) throw new Error("period data is incomplete");
+          const nextPeriods = new Map();
+          payload.forEach(record => {
+            if (!isValidPeriodRecord(record) || nextPeriods.has(record.period)) {
+              throw new Error("period data is invalid");
+            }
+            nextPeriods.set(record.period, record);
+          });
+          if (!["day", "month", "year"].every(period => nextPeriods.has(period))) {
+            throw new Error("period data is incomplete");
+          }
+          firstRoutePeriods.clear();
+          nextPeriods.forEach((record, period) => firstRoutePeriods.set(period, record));
+          renderSelectedPeriod();
         } catch (_error) {
+          firstRoutePeriods.clear();
           pdyyRenderDonut(null);
         }
       }
 
-      async function loadFirstRouteDonut() {
-        pdyyRenderDonut(null);
+      function isValidPeriodRecord(record) {
+        if (!record || !["day", "month", "year"].includes(record.period)) return false;
+        const completed = record.completed && record.completed.count;
+        const pending = record.pending && record.pending.count;
+        const completedPercentage = record.completed && record.completed.percentage;
+        const pendingPercentage = record.pending && record.pending.percentage;
+        const total = record.total;
+        if (![completed, pending, total].every(value => Number.isInteger(value) && value >= 0)) return false;
+        if (![completedPercentage, pendingPercentage].every(value => Number.isFinite(value) && value >= 0 && value <= 100)) return false;
+        if (completed + pending !== total) return false;
+        if (total === 0) return completedPercentage === 0 && pendingPercentage === 0;
+        const expectedCompleted = completed / total * 100;
+        const expectedPending = pending / total * 100;
+        return Math.abs(completedPercentage - expectedCompleted) <= .11
+          && Math.abs(pendingPercentage - expectedPending) <= .11;
+      }
+
+      function renderSelectedPeriod() {
+        const periodData = firstRoutePeriods.get(selectedPeriod);
+        pdyyRenderDonut(periodData ? { ...periodData, scan2fail_count: scan2FailCount } : null);
+      }
+
+      window.UIKitInsightFix2Fail = value => {
+        const nextValue = Number(value);
+        if (!Number.isInteger(nextValue) || nextValue < 0) return false;
+        scan2FailCount = nextValue;
+        renderSelectedPeriod();
+        return true;
+      };
+
+      function selectStatisticsPeriod(period, focusButton = false) {
+        if (!["day", "month", "year"].includes(period)) return;
+        selectedPeriod = period;
+        periodButtons.forEach(button => {
+          const selected = button.dataset.period === period;
+          button.setAttribute("aria-selected", selected ? "true" : "false");
+          button.tabIndex = selected ? 0 : -1;
+          if (selected && focusButton) button.focus();
+        });
+        renderSelectedPeriod();
+        document.dispatchEvent(new CustomEvent("uikitinsight:period-change", {
+          detail: { period }
+        }));
+      }
+
+      periodButtons.forEach((button, index) => {
+        button.addEventListener("click", () => selectStatisticsPeriod(button.dataset.period));
+        button.addEventListener("keydown", event => {
+          if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+          event.preventDefault();
+          const offset = event.key === "ArrowRight" ? 1 : -1;
+          const nextIndex = (index + offset + periodButtons.length) % periodButtons.length;
+          selectStatisticsPeriod(periodButtons[nextIndex].dataset.period, true);
+        });
+      });
+
+      async function loadFirstRouteDonut(clearExisting = false) {
+        if (clearExisting) {
+          firstRoutePeriods.clear();
+          pdyyRenderDonut(null);
+        }
+        if (!firstRoute) return;
         if (window.UIKitInsightRouteJson && typeof window.UIKitInsightRouteJson.loadFirstRouteJson === "function") {
           window.UIKitInsightRouteJson.loadFirstRouteJson();
           return;
         }
-        if (!firstRoute) return;
         try {
           const response = await fetch(firstRoute, { cache: "no-store", headers: { "Accept": "application/json" } });
+          if (!response.ok) throw new Error(`firstRoute returned HTTP ${response.status}`);
           renderFirstRouteJson(await response.text());
         } catch (_error) {
+          firstRoutePeriods.clear();
           pdyyRenderDonut(null);
         }
       }
 
       window.UIKitInsightReceiveFirstRouteJson = renderFirstRouteJson;
+      if (firstRoute) {
+        window.setInterval(() => loadFirstRouteDonut(false), 10000);
+      }
 
       function emitUIEvent(key, value) {
         if (window.UIKitInsightUIEvent && typeof window.UIKitInsightUIEvent.onMenuClick === "function") {
@@ -1556,41 +1720,11 @@
         sceneSettleFrame = requestAnimationFrame(settle);
       }
 
-      function maxCardLift() {
-        const cardRect = firstSceneCard.getBoundingClientRect();
-        const contentRect = firstSceneCardContent.getBoundingClientRect();
-        const unshiftedContentBottom = contentRect.bottom - cardOffset;
-        return Math.max(0, unshiftedContentBottom - cardRect.bottom + 14);
-      }
-
-      function paintCardOffset(value) {
-        const limit = maxCardLift();
-        cardOffset = Math.max(-limit, Math.min(0, value));
-        firstSceneCardContent.style.transform = `translate3d(0, ${cardOffset}px, 0)`;
-      }
-
-      function animateCardTo(destination) {
-        if (cardSettleFrame) cancelAnimationFrame(cardSettleFrame);
-        const initialOffset = cardOffset;
-        const target = Math.max(-maxCardLift(), Math.min(0, destination));
-        if (lowPerformance || Math.abs(target - initialOffset) < .5) {
-          paintCardOffset(target);
-          return;
-        }
-        const startedAt = performance.now();
-        const duration = 210;
-        const settle = now => {
-          const elapsed = Math.min(1, (now - startedAt) / duration);
-          const eased = 1 - Math.pow(1 - elapsed, 3);
-          paintCardOffset(initialOffset + (target - initialOffset) * eased);
-          if (elapsed < 1) {
-            cardSettleFrame = requestAnimationFrame(settle);
-          } else {
-            cardSettleFrame = 0;
-            paintCardOffset(target);
-          }
-        };
-        cardSettleFrame = requestAnimationFrame(settle);
+      function reconcileCardLayout() {
+        requestAnimationFrame(() => {
+          const maxScroll = Math.max(0, firstSceneCard.scrollHeight - firstSceneCard.clientHeight);
+          if (firstSceneCard.scrollTop > maxScroll) firstSceneCard.scrollTop = maxScroll;
+        });
       }
 
       function bindVerticalGesture(element, handlers) {
@@ -1659,41 +1793,6 @@
           const shouldOpen = !cancelled && scannerPull >= scannerPullThreshold;
           if (scannerPull > 3) suppressScanClickUntil = Date.now() + 450;
           settleScannerPull(shouldOpen);
-        }
-      });
-
-      bindVerticalGesture(firstSceneCard, {
-        start(y, event) {
-          event.stopPropagation();
-          if (progress > .05) return false;
-          if (cardSettleFrame) cancelAnimationFrame(cardSettleFrame);
-          cardSettleFrame = 0;
-          cardDragging = true;
-          cardStartY = y;
-          cardLastY = y;
-          cardLastTime = performance.now();
-          cardStartOffset = cardOffset;
-          cardVelocity = 0;
-          return true;
-        },
-        move(y, event) {
-          event.stopPropagation();
-          if (!cardDragging) return;
-          const now = performance.now();
-          const elapsed = Math.max(1, now - cardLastTime);
-          cardVelocity = (y - cardLastY) / elapsed;
-          cardLastY = y;
-          cardLastTime = now;
-          if (Math.abs(y - cardStartY) > 2) event.preventDefault();
-          paintCardOffset(cardStartOffset + y - cardStartY);
-        },
-        end(_y, event, cancelled) {
-          event.stopPropagation();
-          if (!cardDragging) return;
-          cardDragging = false;
-          const limit = maxCardLift();
-          const revealBottom = !cancelled && (cardVelocity < -.12 || cardOffset < -limit * .35);
-          animateCardTo(revealBottom ? -limit : 0);
         }
       });
 
@@ -1834,7 +1933,7 @@
       window.UIKitInsightMarkSecondRouteLoaded = markSecondRouteLoaded;
       window.UIKitInsightShowSecondRouteNA = showSecondRouteNA;
       window.UIKitInsightShowFirstScene = function () { animateSceneTo(0); };
-      loadFirstRouteDonut();
+      loadFirstRouteDonut(true);
 
       paint(0);
     </script>

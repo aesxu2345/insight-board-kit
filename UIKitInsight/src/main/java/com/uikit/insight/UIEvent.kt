@@ -7,7 +7,7 @@ import android.webkit.JavascriptInterface
 abstract class NewInsight {
     abstract fun OnClickUIEvent(events: UIEventStruct): UIEvent
 
-    open fun OnCardNo(cardno: String) = Unit
+    val OnCardNo: OnCardNo = NewCardNoEventListener()
 
     fun onClickUIEvent(events: UIEventStruct): UIEvent = OnClickUIEvent(events)
 }

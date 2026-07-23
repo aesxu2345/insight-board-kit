@@ -44,7 +44,7 @@ wQIDAQAB
         return routeText
     }
 
-    fun requireWebProviderRoute(
+    fun requireProviderRoute(
         route: String,
         fieldName: String,
         bypassSignature: Boolean = false
@@ -56,7 +56,7 @@ wQIDAQAB
         require(verify(segments.nonce, segments.signature)) {
             "$fieldName has an invalid route signature"
         }
-        return appendWebProviderIfMissing(uri).toString()
+        return appendProviderIfMissing(uri).toString()
     }
 
     private fun requireRouteText(route: String, fieldName: String): String {
@@ -75,9 +75,9 @@ wQIDAQAB
         return SignedSegments(nonce, signature)
     }
 
-    private fun appendWebProviderIfMissing(uri: Uri): Uri {
-        if (uri.pathSegments.lastOrNull() == "webprovider") return uri
-        return uri.buildUpon().appendPath("webprovider").build()
+    private fun appendProviderIfMissing(uri: Uri): Uri {
+        if (uri.pathSegments.lastOrNull() == "provider") return uri
+        return uri.buildUpon().appendPath("provider").build()
     }
 
     private fun verify(nonce: String, signatureText: String): Boolean {
