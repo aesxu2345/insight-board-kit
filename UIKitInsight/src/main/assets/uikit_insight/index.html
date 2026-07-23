@@ -581,29 +581,32 @@
       }
 
       .pdyy-chart-box {
-        display: grid;
-        grid-template-rows: minmax(0, 1fr) auto;
+        display: flex;
         width: 100%;
         height: 100%;
         min-height: 0;
         flex: 1 1 0;
+        flex-direction: column;
         align-items: center;
-        justify-items: center;
         padding-top: 16px;
-        will-change: transform;
       }
 
       .pdyy-donut-svg {
         display: block;
-        width: auto;
-        max-width: 100%;
-        height: 100%;
-        min-height: 0;
-        max-height: 370px;
-        align-self: center;
-        justify-self: center;
+        width: 100%;
+        max-width: 370px;
+        height: auto;
+        flex: 0 0 auto;
         aspect-ratio: 1;
         overflow: visible;
+      }
+
+      .pdyy-legend-viewport {
+        position: relative;
+        width: 100%;
+        min-height: 0;
+        flex: 1 1 0;
+        overflow: hidden;
       }
 
       .pdyy-sep {
@@ -623,6 +626,7 @@
         box-shadow:
           0 10px 24px rgba(20, 96, 48, .06),
           0 2px 8px rgba(0, 0, 0, .03);
+        will-change: transform;
       }
 
       .pdyy-legend-row {
@@ -1147,27 +1151,29 @@
                 <text id="pdyyPercentText" x="195" y="221" text-anchor="middle" font-size="42" font-weight="900" fill="#17803a">0%</text>
               </svg>
 
-              <div class="pdyy-legend-card" aria-label="早餐状态图例">
-                <div class="pdyy-legend-row">
-                  <span class="pdyy-dot pdyy-dot-completed"></span>
-                  <span class="pdyy-label">已完成</span>
-                  <span class="pdyy-dash"></span>
-                  <span id="pdyyCompletedText" class="pdyy-value">83</span>
-                  <span id="pdyyCompletedPercentText" class="pdyy-percent">(74.1%)</span>
-                </div>
-                <div class="pdyy-legend-row">
-                  <span class="pdyy-dot pdyy-dot-remaining"></span>
-                  <span class="pdyy-label">剩余</span>
-                  <span class="pdyy-dash"></span>
-                  <span id="pdyyRemainingText" class="pdyy-value">29</span>
-                  <span id="pdyyRemainingPercentText" class="pdyy-percent">(25.9%)</span>
-                </div>
-                <div id="pdyyScanFailedRow" class="pdyy-legend-row" hidden>
-                  <span class="pdyy-dot pdyy-dot-scan-failed"></span>
-                  <span class="pdyy-label">已扫码未登记</span>
-                  <span class="pdyy-dash"></span>
-                  <span id="pdyyScanFailedText" class="pdyy-value">0</span>
-                  <span id="pdyyScanFailedPercentText" class="pdyy-percent">(0.0%)</span>
+              <div class="pdyy-legend-viewport">
+                <div class="pdyy-legend-card" aria-label="早餐状态图例">
+                  <div class="pdyy-legend-row">
+                    <span class="pdyy-dot pdyy-dot-completed"></span>
+                    <span class="pdyy-label">已完成</span>
+                    <span class="pdyy-dash"></span>
+                    <span id="pdyyCompletedText" class="pdyy-value">83</span>
+                    <span id="pdyyCompletedPercentText" class="pdyy-percent">(74.1%)</span>
+                  </div>
+                  <div class="pdyy-legend-row">
+                    <span class="pdyy-dot pdyy-dot-remaining"></span>
+                    <span class="pdyy-label">剩余</span>
+                    <span class="pdyy-dash"></span>
+                    <span id="pdyyRemainingText" class="pdyy-value">29</span>
+                    <span id="pdyyRemainingPercentText" class="pdyy-percent">(25.9%)</span>
+                  </div>
+                  <div id="pdyyScanFailedRow" class="pdyy-legend-row" hidden>
+                    <span class="pdyy-dot pdyy-dot-scan-failed"></span>
+                    <span class="pdyy-label">已扫码未登记</span>
+                    <span class="pdyy-dash"></span>
+                    <span id="pdyyScanFailedText" class="pdyy-value">0</span>
+                    <span id="pdyyScanFailedPercentText" class="pdyy-percent">(0.0%)</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1436,7 +1442,8 @@
       const scanButton = document.getElementById("scanButton");
       const scanLabel = document.getElementById("scanLabel");
       const firstSceneCard = document.getElementById("firstSceneCard");
-      const firstSceneCardContent = firstSceneCard.querySelector(".pdyy-chart-box");
+      const firstSceneLegendViewport = firstSceneCard.querySelector(".pdyy-legend-viewport");
+      const firstSceneLegend = firstSceneCard.querySelector(".pdyy-legend-card");
       const firstRoute = params.get("firstRoute") || "";
       const secondRoute = params.get("secondRoute") || "";
       function readInitialScan2Fail() {
@@ -1737,16 +1744,16 @@
       }
 
       function maxCardLift() {
-        const cardRect = firstSceneCard.getBoundingClientRect();
-        const contentRect = firstSceneCardContent.getBoundingClientRect();
-        const unshiftedContentBottom = contentRect.bottom - cardOffset;
-        return Math.max(0, unshiftedContentBottom - cardRect.bottom + 14);
+        const viewportRect = firstSceneLegendViewport.getBoundingClientRect();
+        const legendRect = firstSceneLegend.getBoundingClientRect();
+        const unshiftedLegendBottom = legendRect.bottom - cardOffset;
+        return Math.max(0, unshiftedLegendBottom - viewportRect.bottom + 2);
       }
 
       function paintCardOffset(value) {
         const limit = maxCardLift();
         cardOffset = Math.max(-limit, Math.min(0, value));
-        firstSceneCardContent.style.transform = `translate3d(0, ${cardOffset}px, 0)`;
+        firstSceneLegend.style.transform = `translate3d(0, ${cardOffset}px, 0)`;
       }
 
       function reconcileCardLayout() {
